@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amaya Weather · Torrance, CA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sky:       #0f1923;
+      --sky-mid:   #162032;
+      --sky-card:  #1c2a3e;
+      --sky-hover: #223350;
+      --border:    rgba(255,255,255,0.07);
+      --ocean:     #3a8fc4;
+      --ocean-dim: #2a6a96;
+      --sun:       #f0a840;
+      --text-1:    #f0f4f8;
+      --text-2:    #8ba3bc;
+      --text-3:    #4e6a82;
+      --green:     #4caf82;
+      --red:       #e05c5c;
+      --rain:      #6aaed6;
+      --radius:    12px;
+      --radius-sm: 8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--sky);
+      color: var(--text-1);
+      min-height: 100vh;
+      padding: 1.25rem;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      background: var(--sky-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+    }
+    .header-left h1 {
+      font-size: 1.2rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      color: var(--text-1);
+    }
+    .header-left p {
+      font-size: 0.8rem;
+      color: var(--text-2);
+      margin-top: 2px;
+    }
+    .header-right {
+      text-align: right;
+    }
+    .live-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      color: var(--green);
+    }
+    .live-dot::before {
+      content: '';
+      width: 7px; height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .last-updated {
+      font-size: 0.75rem;
+      color: var(--text-3);
+      margin-top: 3px;
+    }
+
+    /* ── Grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+    .card {
+      background: var(--sky-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .card-title {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.9rem;
+    }
+
+    /* ── Box 1: Current Conditions ── */
+    .temp-main {
+      font-family: 'DM Mono', monospace;
+      font-size: 4rem;
+      font-weight: 400;
+      line-height: 1;
+      color: var(--text-1);
+    }
+    .temp-unit {
+      font-size: 1.8rem;
+      color: var(--text-2);
+      vertical-align: super;
+    }
+    .condition-label {
+      font-size: 0.85rem;
+      color: var(--text-2);
+      margin-top: 0.4rem;
+      margin-bottom: 1rem;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.82rem;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { color: var(--text-2); }
+    .stat-value { color: var(--text-1); font-weight: 500; }
+    .sun-row {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.75rem;
+    }
+    .sun-item {
+      flex: 1;
+      background: var(--sky-mid);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 0.75rem;
+      text-align: center;
+    }
+    .sun-label { font-size: 0.7rem; color: var(--text-3); margin-bottom: 3px; }
+    .sun-value { font-size: 0.85rem; font-weight: 500; color: var(--sun); }
+
+    /* ── Box 2: Forecast ── */
+    .forecast-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.32rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.82rem;
+    }
+    .forecast-row:last-child { border-bottom: none; }
+    .fc-day { color: var(--text-2); width: 32px; }
+    .fc-icon { font-size: 1rem; width: 24px; text-align: center; }
+    .fc-temps { color: var(--text-1); font-weight: 500; }
+    .fc-pop { color: var(--rain); font-size: 0.75rem; font-family: 'DM Mono', monospace; }
+
+    /* ── Box 3: Tides ── */
+    .tide-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    .tide-item {
+      background: var(--sky-mid);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.75rem;
+    }
+    .tide-type {
+      font-size: 0.65rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+    .tide-high { color: var(--ocean); }
+    .tide-low  { color: var(--text-3); }
+    .tide-time { font-size: 0.85rem; font-weight: 500; color: var(--text-1); }
+    .tide-ht   { font-size: 0.75rem; color: var(--text-2); margin-top: 2px; }
+
+    /* ── Box 4: Indoor ── */
+    .indoor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .indoor-item {
+      background: var(--sky-mid);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem;
+      text-align: center;
+    }
+    .indoor-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 2rem;
+      font-weight: 400;
+      color: var(--text-1);
+      line-height: 1;
+    }
+    .indoor-unit { font-size: 1rem; color: var(--text-2); }
+    .indoor-label { font-size: 0.72rem; color: var(--text-3); margin-top: 6px; }
+    .indoor-updated { font-size: 0.7rem; color: var(--text-3); margin-top: 0.75rem; text-align: right; }
+
+    /* ── Box 5: Ocean ── */
+    .ocean-card { grid-column: span 2; }
+    .ocean-inner {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+    .ocean-main { text-align: center; flex: 0 0 auto; }
+    .ocean-temp {
+      font-family: 'DM Mono', monospace;
+      font-size: 3.5rem;
+      font-weight: 400;
+      color: var(--ocean);
+      line-height: 1;
+    }
+    .ocean-unit { font-size: 1.5rem; color: var(--ocean-dim); }
+    .ocean-loc { font-size: 0.75rem; color: var(--text-2); margin-top: 6px; }
+    .ocean-divider {
+      width: 1px;
+      height: 80px;
+      background: var(--border);
+      flex: 0 0 auto;
+    }
+    .ocean-sources { flex: 1; }
+    .ocean-source-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.82rem;
+    }
+    .ocean-source-row:last-child { border-bottom: none; }
+    .ocean-source-label { color: var(--text-2); }
+    .ocean-source-val { color: var(--text-1); font-weight: 500; font-family: 'DM Mono', monospace; }
+
+    /* ── Loading / Error states ── */
+    .loading { color: var(--text-3); font-size: 0.82rem; }
+    .error   { color: var(--red);    font-size: 0.82rem; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .grid { grid-template-columns: 1fr; }
+      .ocean-card { grid-column: span 1; }
+      .ocean-inner { flex-direction: column; gap: 1rem; }
+      .ocean-divider { width: 80px; height: 1px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>🌊 Amaya Weather</h1>
+    <p>Torrance, CA · <span id="hdr-date">—</span></p>
+  </div>
+  <div class="header-right">
+    <div class="live-dot">Live</div>
+    <div class="last-updated">Updated <span id="hdr-time">—</span></div>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- Box 1: Current Conditions -->
+  <div class="card">
+    <div class="card-title">Current Conditions</div>
+    <div class="temp-main" id="cur-temp">—<span class="temp-unit">°F</span></div>
+    <div class="condition-label" id="cur-condition">Loading…</div>
+    <div class="stat-row"><span class="stat-label">Feels like</span><span class="stat-value" id="cur-feels">—</span></div>
+    <div class="stat-row"><span class="stat-label">Humidity</span><span class="stat-value" id="cur-humidity">—</span></div>
+    <div class="stat-row"><span class="stat-label">Wind</span><span class="stat-value" id="cur-wind">—</span></div>
+    <div class="stat-row"><span class="stat-label">Today high</span><span class="stat-value" id="cur-high">—</span></div>
+    <div class="stat-row"><span class="stat-label">Today low</span><span class="stat-value" id="cur-low">—</span></div>
+    <div class="sun-row">
+      <div class="sun-item">
+        <div class="sun-label">☀ Sunrise</div>
+        <div class="sun-value" id="cur-rise">—</div>
+      </div>
+      <div class="sun-item">
+        <div class="sun-label">🌇 Sunset</div>
+        <div class="sun-value" id="cur-set">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Box 2: Forecast -->
+  <div class="card">
+    <div class="card-title">7-Day Forecast</div>
+    <div id="forecast-rows"><div class="loading">Loading…</div></div>
+  </div>
+
+  <!-- Box 3: Tides -->
+  <div class="card">
+    <div class="card-title">Redondo Beach Tides</div>
+    <div class="tide-grid" id="tide-grid"><div class="loading">Loading…</div></div>
+  </div>
+
+  <!-- Box 4: Indoor -->
+  <div class="card">
+    <div class="card-title">Indoor Environment</div>
+    <div class="indoor-grid">
+      <div class="indoor-item">
+        <div class="indoor-val" id="in-temp">—<span class="indoor-unit">°F</span></div>
+        <div class="indoor-label">Temperature</div>
+      </div>
+      <div class="indoor-item">
+        <div class="indoor-val" id="in-hum">—<span class="indoor-unit">%</span></div>
+        <div class="indoor-label">Humidity</div>
+      </div>
+    </div>
+    <div class="indoor-updated">Via ESP32 · <span id="in-updated">—</span></div>
+  </div>
+
+  <!-- Box 5: Ocean -->
+  <div class="card ocean-card">
+    <div class="card-title">Ocean Temperature</div>
+    <div class="ocean-inner">
+      <div class="ocean-main">
+        <div class="ocean-temp" id="ocean-avg">—<span class="ocean-unit">°F</span></div>
+        <div class="ocean-loc" id="ocean-loc">Redondo Beach avg</div>
+      </div>
+      <div class="ocean-divider"></div>
+      <div class="ocean-sources">
+        <div class="ocean-source-row">
+          <span class="ocean-source-label">Santa Monica Pier</span>
+          <span class="ocean-source-val" id="ocean-sm">—</span>
+        </div>
+        <div class="ocean-source-row">
+          <span class="ocean-source-label">Long Beach Channel</span>
+          <span class="ocean-source-val" id="ocean-lb">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const TEMPEST_TOKEN   = 'e702dd93-1138-49ab-992c-1337f603fc29';
+const TEMPEST_STATION = '161500';
+const NOAA_TIDE_STN   = '9410660';   // Redondo Beach
+const NOAA_SM_STN     = '9410840';   // Santa Monica Pier water temp
+const INDOOR_URL      = 'https://script.google.com/macros/s/AKfycbyfTQMyi4326FyOv_dBK3AzE8XfWnGcrNRp6DI7KQuqMl34PrOTc26YJ8fUdNhitW6BZw/exec';
+const OCEAN_LB_URL    = 'https://script.google.com/macros/s/AKfycbyO_PzDTebOqHZlfwj4yp29m7gbNxaU4zS4OMI4ZB4IACjE80eFOMsHn70HfnKjMMjMOg/exec';
+const LAT  = 33.8367;
+const LON  = -118.3400;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmtTemp = v => v != null ? `${Math.round(v)}°F` : '—';
+const fmtWind = (spd, dir) => {
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  const d = dirs[Math.round(dir / 22.5) % 16] || '';
+  return `${Math.round(spd)} mph ${d}`;
+};
+const wmoIcon = code => {
+  if (code === 0) return '☀️';
+  if (code <= 2)  return '⛅';
+  if (code <= 3)  return '☁️';
+  if (code <= 49) return '🌫️';
+  if (code <= 67) return '🌧️';
+  if (code <= 77) return '❄️';
+  if (code <= 82) return '🌦️';
+  if (code <= 99) return '⛈️';
+  return '🌡️';
+};
+const fmtTime12 = iso => {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
+};
+const dayName = iso => new Date(iso).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'America/Los_Angeles' });
+
+// ── Header date/time ──────────────────────────────────────────────────────────
+function updateHeaderTime() {
+  const now = new Date();
+  $('hdr-date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' });
+  $('hdr-time').textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
+}
+updateHeaderTime();
+setInterval(updateHeaderTime, 60000);
+
+// ── Tempest ───────────────────────────────────────────────────────────────────
+async function fetchTempest() {
+  try {
+    const r = await fetch(`https://swd.weatherflow.com/swd/rest/observations/station/${TEMPEST_STATION}?token=${TEMPEST_TOKEN}`);
+    const d = await r.json();
+    const obs = d.obs?.[0];
+    if (!obs) return;
+
+    const tempF      = obs.air_temperature * 9/5 + 32;
+    const feelsF     = (obs.feels_like ?? obs.air_temperature) * 9/5 + 32;
+    const humidity   = obs.relative_humidity;
+    const windMph    = obs.wind_avg * 2.23694;
+    const windDir    = obs.wind_direction ?? 0;
+    const condition  = obs.conditions ?? '—';
+    const highF      = obs.air_temperature_high_local_day != null ? obs.air_temperature_high_local_day * 9/5 + 32 : null;
+    const lowF       = obs.air_temperature_low_local_day  != null ? obs.air_temperature_low_local_day  * 9/5 + 32 : null;
+
+    $('cur-temp').innerHTML    = `${Math.round(tempF)}<span class="temp-unit">°F</span>`;
+    $('cur-condition').textContent = condition;
+    $('cur-feels').textContent = fmtTemp(feelsF);
+    $('cur-humidity').textContent = `${Math.round(humidity)}%`;
+    $('cur-wind').textContent  = fmtWind(windMph, windDir);
+    $('cur-high').textContent  = highF != null ? fmtTemp(highF) : '—';
+    $('cur-low').textContent   = lowF  != null ? fmtTemp(lowF)  : '—';
+  } catch(e) { console.error('Tempest:', e); }
+}
+
+// ── Sunrise/Sunset via Open-Meteo ─────────────────────────────────────────────
+async function fetchSunTimes() {
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=sunrise,sunset&timezone=America%2FLos_Angeles&forecast_days=1`);
+    const d = await r.json();
+    $('cur-rise').textContent = fmtTime12(d.daily.sunrise[0]);
+    $('cur-set').textContent  = fmtTime12(d.daily.sunset[0]);
+  } catch(e) { console.error('Sun times:', e); }
+}
+
+// ── Forecast via Open-Meteo ───────────────────────────────────────────────────
+async function fetchForecast() {
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles&forecast_days=7`);
+    const d = await r.json();
+    const rows = d.daily.time.map((t, i) => `
+      <div class="forecast-row">
+        <span class="fc-day">${dayName(t)}</span>
+        <span class="fc-icon">${wmoIcon(d.daily.weathercode[i])}</span>
+        <span class="fc-temps">${Math.round(d.daily.temperature_2m_max[i])}° / ${Math.round(d.daily.temperature_2m_min[i])}°</span>
+        <span class="fc-pop">💧${d.daily.precipitation_probability_max[i]}%</span>
+      </div>`).join('');
+    $('forecast-rows').innerHTML = rows;
+  } catch(e) { $('forecast-rows').innerHTML = '<div class="error">Unavailable</div>'; }
+}
+
+// ── Tides via NOAA ────────────────────────────────────────────────────────────
+async function fetchTides() {
+  try {
+    const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const r = await fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?station=${NOAA_TIDE_STN}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english&application=amaya&begin_date=${today}&end_date=${today}&format=json`);
+    const d = await r.json();
+    const preds = d.predictions ?? [];
+    if (!preds.length) { $('tide-grid').innerHTML = '<div class="loading">No tide data</div>'; return; }
+    $('tide-grid').innerHTML = preds.slice(0,4).map(p => {
+      const isHigh = p.type === 'H';
+      const t = p.t.split(' ')[1];
+      const [hh, mm] = t.split(':').map(Number);
+      const ampm = hh >= 12 ? 'PM' : 'AM';
+      const h12  = hh % 12 || 12;
+      return `<div class="tide-item">
+        <div class="tide-type ${isHigh ? 'tide-high' : 'tide-low'}">${isHigh ? 'HIGH' : 'LOW'}</div>
+        <div class="tide-time">${h12}:${String(mm).padStart(2,'0')} ${ampm}</div>
+        <div class="tide-ht">${parseFloat(p.v).toFixed(1)} ft</div>
+      </div>`;
+    }).join('');
+  } catch(e) { $('tide-grid').innerHTML = '<div class="error">Unavailable</div>'; }
+}
+
+// ── Indoor (Google Sheet) ─────────────────────────────────────────────────────
+async function fetchIndoor() {
+  try {
+    const r = await fetch(INDOOR_URL);
+    const d = await r.json();
+    $('in-temp').innerHTML = `${Math.round(d.temp)}<span class="indoor-unit">°F</span>`;
+    $('in-hum').innerHTML  = `${Math.round(d.humidity)}<span class="indoor-unit">%</span>`;
+    $('in-updated').textContent = d.updated ? new Date(d.updated).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' }) : '—';
+  } catch(e) { console.error('Indoor:', e); }
+}
+
+// ── Ocean Temperature ─────────────────────────────────────────────────────────
+async function fetchOcean() {
+  let smF = null, lbF = null;
+
+  // Santa Monica (CO-OPS)
+  try {
+    const r = await fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?station=${NOAA_SM_STN}&product=water_temperature&date=latest&units=english&time_zone=lst_ldt&format=json`);
+    const d = await r.json();
+    const v = parseFloat(d.data?.[0]?.v);
+    if (!isNaN(v)) smF = v;
+  } catch(e) { console.error('SM ocean:', e); }
+
+  // Long Beach (Google Sheet)
+  try {
+    const r = await fetch(OCEAN_LB_URL);
+    const t = await r.text();
+    const v = parseFloat(t.trim());
+    if (!isNaN(v) && v > 32 && v < 100) lbF = v;
+  } catch(e) { console.error('LB ocean:', e); }
+
+  $('ocean-sm').textContent = smF != null ? `${Math.round(smF)}°F` : '—';
+  $('ocean-lb').textContent = lbF != null ? `${Math.round(lbF)}°F` : '—';
+
+  if (smF != null && lbF != null) {
+    $('ocean-avg').innerHTML = `${Math.round((smF + lbF) / 2)}<span class="ocean-unit">°F</span>`;
+    $('ocean-loc').textContent = 'Redondo Beach avg';
+  } else if (smF != null) {
+    $('ocean-avg').innerHTML = `${Math.round(smF)}<span class="ocean-unit">°F</span>`;
+    $('ocean-loc').textContent = 'Santa Monica';
+  } else if (lbF != null) {
+    $('ocean-avg').innerHTML = `${Math.round(lbF)}<span class="ocean-unit">°F</span>`;
+    $('ocean-loc').textContent = 'Long Beach';
+  } else {
+    $('ocean-avg').innerHTML = `—<span class="ocean-unit">°F</span>`;
+    $('ocean-loc').textContent = 'No data';
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function refresh() {
+  await Promise.all([
+    fetchTempest(),
+    fetchSunTimes(),
+    fetchForecast(),
+    fetchTides(),
+    fetchIndoor(),
+    fetchOcean()
+  ]);
+}
+
+refresh();
+setInterval(refresh, 5 * 60 * 1000); // refresh every 5 minutes
+</script>
+</body>
+</html>
