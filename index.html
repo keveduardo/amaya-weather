@@ -33,7 +33,7 @@
       background: var(--sky);
       color: var(--text-1);
       min-height: 100vh;
-      padding: 1.25rem;
+      padding: 0.75rem;
     }
 
     /* ── Header ── */
@@ -41,11 +41,11 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1rem 1.5rem;
+      padding: 0.6rem 1.25rem;
       background: var(--sky-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      margin-bottom: 1rem;
+      margin-bottom: 0.75rem;
     }
     .header-left h1 {
       font-size: 1.2rem;
@@ -89,165 +89,154 @@
     .grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 0.75rem;
+      gap: 0.6rem;
     }
     .card {
       background: var(--sky-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1.1rem 1.25rem;
+      padding: 0.8rem 1rem;
       position: relative;
       overflow: hidden;
     }
     .card-title {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       font-weight: 500;
       color: var(--text-3);
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      margin-bottom: 0.9rem;
+      margin-bottom: 0.6rem;
     }
 
     /* ── Box 1: Current Conditions ── */
     .temp-main {
       font-family: 'DM Mono', monospace;
-      font-size: 4rem;
+      font-size: 3rem;
       font-weight: 400;
       line-height: 1;
       color: var(--text-1);
     }
     .temp-unit {
-      font-size: 1.8rem;
+      font-size: 1.4rem;
       color: var(--text-2);
       vertical-align: super;
     }
     .condition-label {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       color: var(--text-2);
-      margin-top: 0.4rem;
-      margin-bottom: 1rem;
+      margin-top: 0.25rem;
+      margin-bottom: 0.6rem;
     }
     .stat-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0.35rem 0;
+      padding: 0.22rem 0;
       border-bottom: 1px solid var(--border);
-      font-size: 0.82rem;
+      font-size: 0.78rem;
     }
     .stat-row:last-child { border-bottom: none; }
     .stat-label { color: var(--text-2); }
     .stat-value { color: var(--text-1); font-weight: 500; }
     .sun-row {
       display: flex;
-      gap: 1rem;
-      margin-top: 0.75rem;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
     }
     .sun-item {
       flex: 1;
       background: var(--sky-mid);
       border-radius: var(--radius-sm);
-      padding: 0.5rem 0.75rem;
+      padding: 0.35rem 0.5rem;
       text-align: center;
     }
-    .sun-label { font-size: 0.7rem; color: var(--text-3); margin-bottom: 3px; }
-    .sun-value { font-size: 0.85rem; font-weight: 500; color: var(--sun); }
+    .sun-label { font-size: 0.65rem; color: var(--text-3); margin-bottom: 2px; }
+    .sun-value { font-size: 0.8rem; font-weight: 500; color: var(--sun); }
 
     /* ── Box 2: Forecast ── */
     .forecast-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.32rem 0;
+      padding: 0.22rem 0;
       border-bottom: 1px solid var(--border);
-      font-size: 0.82rem;
+      font-size: 0.78rem;
     }
     .forecast-row:last-child { border-bottom: none; }
     .fc-day { color: var(--text-2); width: 32px; }
-    .fc-icon { font-size: 1rem; width: 24px; text-align: center; }
+    .fc-icon { font-size: 0.9rem; width: 24px; text-align: center; }
     .fc-temps { color: var(--text-1); font-weight: 500; }
-    .fc-pop { color: var(--rain); font-size: 0.75rem; font-family: 'DM Mono', monospace; }
+    .fc-pop { color: var(--rain); font-size: 0.72rem; font-family: 'DM Mono', monospace; }
 
     /* ── Box 3: Tides ── */
     .tide-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem;
+      grid-template-columns: 1fr;
+      gap: 0.4rem;
     }
     .tide-item {
       background: var(--sky-mid);
       border-radius: var(--radius-sm);
-      padding: 0.6rem 0.75rem;
+      padding: 0.4rem 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
+    .tide-left { display: flex; align-items: center; gap: 0.5rem; }
     .tide-type {
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      margin-bottom: 4px;
+      width: 28px;
     }
     .tide-high { color: var(--ocean); }
     .tide-low  { color: var(--text-3); }
-    .tide-time { font-size: 0.85rem; font-weight: 500; color: var(--text-1); }
-    .tide-ht   { font-size: 0.75rem; color: var(--text-2); margin-top: 2px; }
+    .tide-time { font-size: 0.82rem; font-weight: 500; color: var(--text-1); }
+    .tide-ht   { font-size: 0.78rem; color: var(--text-2); font-family: 'DM Mono', monospace; }
 
     /* ── Box 4: Indoor ── */
     .indoor-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0.75rem;
+      gap: 0.5rem;
     }
     .indoor-item {
       background: var(--sky-mid);
       border-radius: var(--radius-sm);
-      padding: 0.85rem;
+      padding: 0.6rem;
       text-align: center;
     }
     .indoor-val {
       font-family: 'DM Mono', monospace;
-      font-size: 2rem;
+      font-size: 1.6rem;
       font-weight: 400;
       color: var(--text-1);
       line-height: 1;
     }
-    .indoor-unit { font-size: 1rem; color: var(--text-2); }
-    .indoor-label { font-size: 0.72rem; color: var(--text-3); margin-top: 6px; }
-    .indoor-updated { font-size: 0.7rem; color: var(--text-3); margin-top: 0.75rem; text-align: right; }
+    .indoor-unit { font-size: 0.85rem; color: var(--text-2); }
+    .indoor-label { font-size: 0.68rem; color: var(--text-3); margin-top: 4px; }
+    .indoor-updated { font-size: 0.67rem; color: var(--text-3); margin-top: 0.5rem; text-align: right; }
 
     /* ── Box 5: Ocean ── */
     .ocean-card { grid-column: span 2; }
-    .ocean-inner {
+    .ocean-center {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 2rem;
+      justify-content: center;
+      height: 100%;
+      padding: 0.25rem 0;
     }
-    .ocean-main { text-align: center; flex: 0 0 auto; }
     .ocean-temp {
       font-family: 'DM Mono', monospace;
-      font-size: 3.5rem;
+      font-size: 2.8rem;
       font-weight: 400;
       color: var(--ocean);
       line-height: 1;
     }
-    .ocean-unit { font-size: 1.5rem; color: var(--ocean-dim); }
+    .ocean-unit { font-size: 1.3rem; color: var(--ocean-dim); }
     .ocean-loc { font-size: 0.75rem; color: var(--text-2); margin-top: 6px; }
-    .ocean-divider {
-      width: 1px;
-      height: 80px;
-      background: var(--border);
-      flex: 0 0 auto;
-    }
-    .ocean-sources { flex: 1; }
-    .ocean-source-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 0.35rem 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.82rem;
-    }
-    .ocean-source-row:last-child { border-bottom: none; }
-    .ocean-source-label { color: var(--text-2); }
-    .ocean-source-val { color: var(--text-1); font-weight: 500; font-family: 'DM Mono', monospace; }
 
     /* ── Loading / Error states ── */
     .loading { color: var(--text-3); font-size: 0.82rem; }
@@ -330,22 +319,9 @@
   <!-- Box 5: Ocean -->
   <div class="card ocean-card">
     <div class="card-title">Ocean Temperature</div>
-    <div class="ocean-inner">
-      <div class="ocean-main">
-        <div class="ocean-temp" id="ocean-avg">—<span class="ocean-unit">°F</span></div>
-        <div class="ocean-loc" id="ocean-loc">Redondo Beach avg</div>
-      </div>
-      <div class="ocean-divider"></div>
-      <div class="ocean-sources">
-        <div class="ocean-source-row">
-          <span class="ocean-source-label">Santa Monica Pier</span>
-          <span class="ocean-source-val" id="ocean-sm">—</span>
-        </div>
-        <div class="ocean-source-row">
-          <span class="ocean-source-label">Long Beach Channel</span>
-          <span class="ocean-source-val" id="ocean-lb">—</span>
-        </div>
-      </div>
+    <div class="ocean-center">
+      <div class="ocean-temp" id="ocean-avg">—<span class="ocean-unit">°F</span></div>
+      <div class="ocean-loc" id="ocean-loc">Redondo Beach</div>
     </div>
   </div>
 
@@ -464,9 +440,11 @@ async function fetchTides() {
       const ampm = hh >= 12 ? 'PM' : 'AM';
       const h12  = hh % 12 || 12;
       return `<div class="tide-item">
-        <div class="tide-type ${isHigh ? 'tide-high' : 'tide-low'}">${isHigh ? 'HIGH' : 'LOW'}</div>
-        <div class="tide-time">${h12}:${String(mm).padStart(2,'0')} ${ampm}</div>
-        <div class="tide-ht">${parseFloat(p.v).toFixed(1)} ft</div>
+        <div class="tide-left">
+          <span class="tide-type ${isHigh ? 'tide-high' : 'tide-low'}">${isHigh ? 'HIGH' : 'LOW'}</span>
+          <span class="tide-time">${h12}:${String(mm).padStart(2,'0')} ${ampm}</span>
+        </div>
+        <span class="tide-ht">${parseFloat(p.v).toFixed(1)} ft</span>
       </div>`;
     }).join('');
   } catch(e) { $('tide-grid').innerHTML = '<div class="error">Unavailable</div>'; }
@@ -503,22 +481,19 @@ async function fetchOcean() {
     if (!isNaN(v) && v > 32 && v < 100) lbF = v;
   } catch(e) { console.error('LB ocean:', e); }
 
-  $('ocean-sm').textContent = smF != null ? `${Math.round(smF)}°F` : '—';
-  $('ocean-lb').textContent = lbF != null ? `${Math.round(lbF)}°F` : '—';
+  $('ocean-avg').innerHTML = smF != null && lbF != null
+    ? `${Math.round((smF + lbF) / 2)}<span class="ocean-unit">°F</span>`
+    : smF != null
+    ? `${Math.round(smF)}<span class="ocean-unit">°F</span>`
+    : lbF != null
+    ? `${Math.round(lbF)}<span class="ocean-unit">°F</span>`
+    : `—<span class="ocean-unit">°F</span>`;
 
-  if (smF != null && lbF != null) {
-    $('ocean-avg').innerHTML = `${Math.round((smF + lbF) / 2)}<span class="ocean-unit">°F</span>`;
-    $('ocean-loc').textContent = 'Redondo Beach avg';
-  } else if (smF != null) {
-    $('ocean-avg').innerHTML = `${Math.round(smF)}<span class="ocean-unit">°F</span>`;
-    $('ocean-loc').textContent = 'Santa Monica';
-  } else if (lbF != null) {
-    $('ocean-avg').innerHTML = `${Math.round(lbF)}<span class="ocean-unit">°F</span>`;
-    $('ocean-loc').textContent = 'Long Beach';
-  } else {
-    $('ocean-avg').innerHTML = `—<span class="ocean-unit">°F</span>`;
-    $('ocean-loc').textContent = 'No data';
-  }
+  $('ocean-loc').textContent = smF != null && lbF != null
+    ? 'Redondo Beach'
+    : smF != null ? 'Santa Monica'
+    : lbF != null ? 'Long Beach'
+    : 'No data';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
