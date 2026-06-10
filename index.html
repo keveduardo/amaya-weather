@@ -168,14 +168,21 @@
     .chart-wrap canvas { width: 100% !important; height: 100% !important; }
     .indoor-updated { font-size: 0.65rem; color: var(--text-3); text-align: right; margin-top: 3px; }
 
-    /* ── Box 5: Ocean ── */
-    .ocean-center { text-align: center; padding: 0.5rem 0; }
+    /* ── Box 5: Ocean / Pool ── */
+    .water-split {
+      display: flex; align-items: stretch; padding: 0.5rem 0;
+    }
+    .water-half { flex: 1; text-align: center; }
+    .water-divider {
+      width: 1px; background: var(--sky-mid); margin: 0.2rem 0;
+    }
     .ocean-temp {
       font-family: 'DM Mono', monospace; font-size: 2.8rem;
       font-weight: 400; color: var(--ocean); line-height: 1;
     }
     .ocean-unit { font-size: 1.3rem; color: var(--ocean-dim); }
     .ocean-loc  { font-size: 0.75rem; color: var(--text-2); margin-top: 5px; }
+    .pool-stale { font-size: 0.62rem; color: var(--text-3); margin-top: 2px; }
 
     /* ── Box 6: Tides ── */
     .tide-list { display: flex; flex-direction: column; gap: 0.35rem; }
@@ -314,12 +321,20 @@
     <div class="indoor-updated">Via ESP32 · <span id="in-updated">—</span></div>
   </div>
 
-  <!-- Box 5: Ocean Temp -->
+  <!-- Box 5: Ocean / Pool Temp -->
   <div class="card card-ocean">
-    <div class="card-title">Ocean Temperature</div>
-    <div class="ocean-center">
-      <div class="ocean-temp" id="ocean-avg">—<span class="ocean-unit">°F</span></div>
-      <div class="ocean-loc" id="ocean-loc">Redondo Beach</div>
+    <div class="card-title">Water Temperature</div>
+    <div class="water-split">
+      <div class="water-half">
+        <div class="ocean-temp" id="ocean-avg">—<span class="ocean-unit">°F</span></div>
+        <div class="ocean-loc" id="ocean-loc">Redondo Beach</div>
+      </div>
+      <div class="water-divider"></div>
+      <div class="water-half">
+        <div class="ocean-temp" id="pool-temp">—<span class="ocean-unit">°F</span></div>
+        <div class="ocean-loc" id="pool-label">Pool</div>
+        <div class="pool-stale" id="pool-stale"></div>
+      </div>
     </div>
   </div>
 
@@ -345,6 +360,7 @@ const NOAA_TIDE_STN   = '9410660';
 const NOAA_SM_STN     = '9410840';
 const INDOOR_URL      = 'https://script.google.com/macros/s/AKfycbyfTQMyi4326FyOv_dBK3AzE8XfWnGcrNRp6DI7KQuqMl34PrOTc26YJ8fUdNhitW6BZw/exec';
 const OCEAN_LB_URL    = 'https://script.google.com/macros/s/AKfycbyO_PzDTebOqHZlfwj4yp29m7gbNxaU4zS4OMI4ZB4IACjE80eFOMsHn70HfnKjMMjMOg/exec';
+const POOL_URL        = 'https://script.google.com/macros/s/AKfycbwy9GT2y9f-_W2zsQNqDf4BsQf6v6es9MH6lZzr0zAuJpyxFl19ZltEkS0jYqBwgWPp/exec';
 const LAT  = 33.8367;
 const LON  = -118.3400;
 
@@ -613,12 +629,41 @@ async function fetchOcean() {
     : smF!=null ? 'Santa Monica' : lbF!=null ? 'Long Beach' : 'No data';
 }
 
+// ── Pool / Spa ────────────────────────────────────────────────────────────────
+async function fetchPool() {
+  try {
+    const r = await fetch(POOL_URL);
+    const d = await r.json();
+
+    let temp = null, label = 'Pool', stale = '';
+
+    if (d.spa_temp != null) {
+      // Spa is running and reporting — show spa temp
+      temp = d.spa_temp;
+      label = 'Spa';
+    } else if (d.pool_temp != null) {
+      temp = d.pool_temp;
+      label = 'Pool';
+      if (!d.pool_temp_live && d.pool_temp_time) {
+        const t = new Date(d.pool_temp_time);
+        stale = 'as of ' + t.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+      }
+    }
+
+    $('pool-temp').innerHTML = temp != null
+      ? `${Math.round(temp)}<span class="ocean-unit">°F</span>`
+      : `—<span class="ocean-unit">°F</span>`;
+    $('pool-label').textContent = label;
+    $('pool-stale').textContent = stale;
+  } catch(e) { console.error('Pool:', e); }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function refresh() {
   await Promise.all([
     fetchTempest(), fetchSunTimes(), fetchAirQuality(),
     fetchMarine(), fetchForecast(), fetchTides(),
-    fetchIndoor(), fetchOcean()
+    fetchIndoor(), fetchOcean(), fetchPool()
   ]);
 }
 refresh();
