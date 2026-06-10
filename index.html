@@ -336,6 +336,8 @@
         <div class="pool-stale" id="pool-stale"></div>
       </div>
     </div>
+    <div class="card-title" style="margin-top:0.4rem">24-hr Pool Temp</div>
+    <div class="chart-wrap"><canvas id="poolChart"></canvas></div>
   </div>
 
   <!-- Box 6: Tides -->
@@ -656,6 +658,13 @@ async function fetchPool() {
     $('pool-label').textContent = label;
     $('pool-stale').textContent = stale;
   } catch(e) { console.error('Pool:', e); }
+
+  // 24-hr pool temp history chart
+  try {
+    const hr = await fetch(POOL_URL + '?history=1');
+    const hd = await hr.json();
+    if (hd.temps && hd.temps.length > 1) drawChart('poolChart', hd.temps);
+  } catch(e) { console.error('Pool history:', e); }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
