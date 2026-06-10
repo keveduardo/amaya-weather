@@ -568,20 +568,23 @@ async function fetchTides() {
 }
 
 // ── Indoor ────────────────────────────────────────────────────────────────────
-let tempHistory = [];
 async function fetchIndoor() {
   try {
     const r = await fetch(INDOOR_URL);
-    const d = await r.json();
-    const temp = parseFloat(d.temp);
+    const rows = await r.json();
+    if (!Array.isArray(rows) || rows.length === 0) return;
+
+    // Most recent reading
+    const latest = rows[rows.length - 1];
+    const temp = parseFloat(latest.temp);
+    const hum  = parseFloat(latest.humidity);
     $('in-temp').innerHTML = `${Math.round(temp)}<span class="indoor-unit">°F</span>`;
-    $('in-hum').innerHTML  = `${Math.round(d.humidity)}<span class="indoor-unit">%</span>`;
-    $('in-updated').textContent = d.updated || '—';
-    if (!isNaN(temp)) {
-      tempHistory.push(temp);
-      if (tempHistory.length > 48) tempHistory.shift(); // keep 24hrs at 30min intervals
-      drawChart('tempChart', tempHistory);
-    }
+    $('in-hum').innerHTML  = `${Math.round(hum)}<span class="indoor-unit">%</span>`;
+    $('in-updated').textContent = latest.updated || '—';
+
+    // Build history array from all rows
+    const history = rows.map(r => parseFloat(r.temp)).filter(v => !isNaN(v));
+    drawChart('tempChart', history);
   } catch(e) { console.error('Indoor:', e); }
 }
 
