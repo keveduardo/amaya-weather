@@ -291,8 +291,6 @@
     <div class="stat-row"><span class="stat-label">Humidity</span><span class="stat-value" id="cur-humidity">—</span></div>
     <div class="stat-row"><span class="stat-label">Wind</span><span class="stat-value" id="cur-wind">—</span></div>
     <div class="stat-row"><span class="stat-label">Wind gusts</span><span class="stat-value" id="cur-gust">—</span></div>
-    <div class="stat-row"><span class="stat-label">Today high</span><span class="stat-value" id="cur-high">—</span></div>
-    <div class="stat-row"><span class="stat-label">Today low</span><span class="stat-value" id="cur-low">—</span></div>
     <div class="stat-row"><span class="stat-label">Rain today</span><span class="stat-value" id="cur-rain">—</span></div>
     <div class="sun-row">
       <div class="sun-item"><div class="sun-label">☀ Sunrise</div><div class="sun-value" id="cur-rise">—</div></div>
@@ -597,11 +595,9 @@ async function fetchForecast() {
     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles&forecast_days=7`);
     const d = await r.json();
 
-    // Today's high/low (day 0) feeds the Current Conditions badge + stat rows
+    // Today's high/low (day 0) feeds the Current Conditions badge
     const tHigh = d.daily.temperature_2m_max?.[0];
     const tLow  = d.daily.temperature_2m_min?.[0];
-    $('cur-high').textContent       = tHigh != null ? `${Math.round(tHigh)}°F` : '—';
-    $('cur-low').textContent        = tLow  != null ? `${Math.round(tLow)}°F`  : '—';
     $('cur-high-badge').textContent = tHigh != null ? `${Math.round(tHigh)}°`  : '—';
     $('cur-low-badge').textContent  = tLow  != null ? `${Math.round(tLow)}°`   : '—';
 
