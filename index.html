@@ -519,10 +519,7 @@ async function fetchTempest() {
     $('cur-humidity').textContent = `${Math.round(obs.relative_humidity)}%`;
     $('cur-wind').textContent   = fmtWind(windMph, obs.wind_direction ?? 0);
     $('cur-gust').textContent   = `${Math.round(gustMph)} mph`;
-    $('cur-high').textContent   = highF != null ? fmtTemp(highF) : '—';
-    $('cur-low').textContent    = lowF  != null ? fmtTemp(lowF)  : '—';
-    $('cur-high-badge').textContent = highF != null ? Math.round(highF) + '°' : '—';
-    $('cur-low-badge').textContent  = lowF  != null ? Math.round(lowF)  + '°' : '—';
+    // High/low come from Open-Meteo via fetchForecast (Tempest doesn't report daily extremes)
     $('cur-rain').textContent   = rainIn != null ? `${rainIn} in` : '0.00 in';
     if (pressureInHg) {
       $('pressure-val').textContent   = `${pressureInHg} inHg`;
@@ -599,6 +596,15 @@ async function fetchForecast() {
   try {
     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles&forecast_days=7`);
     const d = await r.json();
+
+    // Today's high/low (day 0) feeds the Current Conditions badge + stat rows
+    const tHigh = d.daily.temperature_2m_max?.[0];
+    const tLow  = d.daily.temperature_2m_min?.[0];
+    $('cur-high').textContent       = tHigh != null ? `${Math.round(tHigh)}°F` : '—';
+    $('cur-low').textContent        = tLow  != null ? `${Math.round(tLow)}°F`  : '—';
+    $('cur-high-badge').textContent = tHigh != null ? `${Math.round(tHigh)}°`  : '—';
+    $('cur-low-badge').textContent  = tLow  != null ? `${Math.round(tLow)}°`   : '—';
+
     $('forecast-grid').innerHTML = d.daily.time.map((t,i) => `
       <div class="fc-day-card">
         <div class="fc-day-name">${dayName(t)}</div>
