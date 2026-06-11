@@ -105,11 +105,19 @@
     .stat-value { color: var(--text-1); font-weight: 500; }
 
     /* ── Box 1: Current ── */
+    .temp-hero { display: flex; align-items: center; gap: 0.9rem; }
     .temp-main {
       font-family: 'DM Mono', monospace; font-size: 3rem;
       font-weight: 400; line-height: 1; color: var(--text-1);
     }
     .temp-unit { font-size: 1.4rem; color: var(--text-2); vertical-align: super; }
+    .hilo-badge { display: flex; flex-direction: column; gap: 0.15rem; }
+    .hilo-row { display: flex; align-items: baseline; gap: 0.35rem; font-size: 0.95rem; }
+    .hilo-arrow { font-size: 0.8rem; }
+    .hilo-hi { color: var(--red); }
+    .hilo-lo { color: var(--ocean); }
+    .hilo-val { font-family: 'DM Mono', monospace; font-weight: 500; color: var(--text-1); }
+    .hilo-cap { font-size: 0.6rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; }
     .condition-label { font-size: 0.78rem; color: var(--text-2); margin: 0.2rem 0 0.5rem; }
     .sun-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
     .sun-item {
@@ -119,7 +127,26 @@
     .sun-label { font-size: 0.62rem; color: var(--text-3); margin-bottom: 1px; }
     .sun-value { font-size: 0.78rem; font-weight: 500; color: var(--sun); }
 
-    /* ── Box 2: AQI / UV / Pressure ── */
+    /* ── Box 8: Travel lookup ── */
+    .travel-search { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
+    .travel-input {
+      flex: 1; min-width: 180px; padding: 0.5rem 0.7rem;
+      background: var(--sky-mid); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-1);
+      font-size: 0.85rem; font-family: inherit;
+    }
+    .travel-input::placeholder { color: var(--text-3); }
+    .travel-btn {
+      padding: 0.5rem 1.1rem; background: var(--ocean); color: #fff;
+      border: none; border-radius: var(--radius-sm); font-size: 0.85rem;
+      font-weight: 500; cursor: pointer; font-family: inherit;
+    }
+    .travel-btn:active { opacity: 0.8; }
+    .travel-place { font-size: 0.95rem; font-weight: 500; color: var(--text-1); margin-bottom: 0.1rem; }
+    .travel-now { display: flex; align-items: center; gap: 0.7rem; margin: 0.3rem 0 0.6rem; }
+    .travel-now-temp { font-family: 'DM Mono', monospace; font-size: 2rem; color: var(--text-1); line-height: 1; }
+    .travel-now-cond { font-size: 0.78rem; color: var(--text-2); }
+    .travel-hint { font-size: 0.72rem; color: var(--text-3); }
     .aqi-badge {
       display: inline-block; padding: 0.2rem 0.6rem;
       border-radius: 20px; font-size: 0.75rem; font-weight: 500;
@@ -251,7 +278,14 @@
   <!-- Box 1: Current Conditions -->
   <div class="card card-current">
     <div class="card-title">Current Conditions</div>
-    <div class="temp-main" id="cur-temp">—<span class="temp-unit">°F</span></div>
+    <div class="temp-hero">
+      <div class="temp-main" id="cur-temp">—<span class="temp-unit">°F</span></div>
+      <div class="hilo-badge">
+        <div class="hilo-cap">Today</div>
+        <div class="hilo-row hilo-hi"><span class="hilo-arrow">▲</span><span>H</span><span class="hilo-val" id="cur-high-badge">—</span></div>
+        <div class="hilo-row hilo-lo"><span class="hilo-arrow">▼</span><span>L</span><span class="hilo-val" id="cur-low-badge">—</span></div>
+      </div>
+    </div>
     <div class="condition-label" id="cur-condition">Loading…</div>
     <div class="stat-row"><span class="stat-label">Feels like</span><span class="stat-value" id="cur-feels">—</span></div>
     <div class="stat-row"><span class="stat-label">Humidity</span><span class="stat-value" id="cur-humidity">—</span></div>
@@ -350,6 +384,18 @@
   <div class="card full-width card-forecast">
     <div class="card-title">7-Day Forecast</div>
     <div class="forecast-grid" id="forecast-grid"><div class="loading">Loading…</div></div>
+  </div>
+
+  <!-- Box 8: Travel weather lookup (full width) -->
+  <div class="card full-width">
+    <div class="card-title">Weather Anywhere</div>
+    <div class="travel-search">
+      <input class="travel-input" id="travel-input" type="text"
+             placeholder="Search a city (e.g. Bucaramanga, Maui, Cartagena)"
+             autocomplete="off">
+      <button class="travel-btn" id="travel-btn">Check</button>
+    </div>
+    <div id="travel-result"><div class="travel-hint">Type a city and tap Check to see current conditions and a 7-day forecast.</div></div>
   </div>
 
 </div>
@@ -475,6 +521,8 @@ async function fetchTempest() {
     $('cur-gust').textContent   = `${Math.round(gustMph)} mph`;
     $('cur-high').textContent   = highF != null ? fmtTemp(highF) : '—';
     $('cur-low').textContent    = lowF  != null ? fmtTemp(lowF)  : '—';
+    $('cur-high-badge').textContent = highF != null ? Math.round(highF) + '°' : '—';
+    $('cur-low-badge').textContent  = lowF  != null ? Math.round(lowF)  + '°' : '—';
     $('cur-rain').textContent   = rainIn != null ? `${rainIn} in` : '0.00 in';
     if (pressureInHg) {
       $('pressure-val').textContent   = `${pressureInHg} inHg`;
@@ -560,6 +608,48 @@ async function fetchForecast() {
         <div class="fc-day-pop">💧${d.daily.precipitation_probability_max[i]}%</div>
       </div>`).join('');
   } catch(e) { $('forecast-grid').innerHTML = '<div class="error">Unavailable</div>'; }
+}
+
+// ── Travel weather lookup (Open-Meteo geocoding + forecast, no key) ────────────
+async function travelLookup() {
+  const q = $('travel-input').value.trim();
+  if (!q) return;
+  const out = $('travel-result');
+  out.innerHTML = '<div class="loading">Searching…</div>';
+  try {
+    // 1) Geocode the city name → lat/lon
+    const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en&format=json`);
+    const gd = await g.json();
+    if (!gd.results || !gd.results.length) {
+      out.innerHTML = `<div class="travel-hint">No match for "${q}". Try a different spelling or add a country.</div>`;
+      return;
+    }
+    const loc = gd.results[0];
+    const place = [loc.name, loc.admin1, loc.country].filter(Boolean).join(', ');
+
+    // 2) Current + 7-day forecast for that location, in its own local time
+    const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,weathercode&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=auto&forecast_days=7`);
+    const wd = await w.json();
+    const cur = wd.current;
+    const grid = wd.daily.time.map((t,i) => `
+      <div class="fc-day-card">
+        <div class="fc-day-name">${dayName(t)}</div>
+        <div class="fc-day-icon">${wmoIcon(wd.daily.weathercode[i])}</div>
+        <div class="fc-day-hi">${Math.round(wd.daily.temperature_2m_max[i])}°</div>
+        <div class="fc-day-lo">${Math.round(wd.daily.temperature_2m_min[i])}°</div>
+        <div class="fc-day-pop">💧${wd.daily.precipitation_probability_max[i]}%</div>
+      </div>`).join('');
+
+    out.innerHTML = `
+      <div class="travel-place">${place}</div>
+      <div class="travel-now">
+        <div class="travel-now-temp">${Math.round(cur.temperature_2m)}°F</div>
+        <div class="travel-now-cond">${wmoIcon(cur.weathercode)} now</div>
+      </div>
+      <div class="forecast-grid">${grid}</div>`;
+  } catch(e) {
+    out.innerHTML = '<div class="error">Lookup failed. Try again.</div>';
+  }
 }
 
 // ── Tides ─────────────────────────────────────────────────────────────────────
@@ -677,6 +767,10 @@ async function refresh() {
 }
 refresh();
 setInterval(refresh, 5 * 60 * 1000);
+
+// Travel lookup is on-demand only (not in the auto-refresh cycle)
+$('travel-btn').addEventListener('click', travelLookup);
+$('travel-input').addEventListener('keydown', e => { if (e.key === 'Enter') travelLookup(); });
 </script>
 </body>
 </html>
