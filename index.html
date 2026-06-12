@@ -429,7 +429,7 @@ const fmtWind = (spd, dir) => {
 };
 const wmoIcon = c => c===0?'☀️':c<=2?'⛅':c<=3?'☁️':c<=49?'🌫️':c<=67?'🌧️':c<=77?'❄️':c<=82?'🌦️':c<=99?'⛈️':'🌡️';
 const fmtTime12 = iso => new Date(iso).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Los_Angeles'});
-const dayName   = iso => new Date(iso).toLocaleDateString('en-US',{weekday:'short',timeZone:'America/Los_Angeles'});
+const dayName   = iso => { const [y,m,d] = iso.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('en-US',{weekday:'short'}); };
 const degToCard = d => {
   const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
   return dirs[Math.round(d/22.5)%16];
@@ -629,8 +629,11 @@ async function travelLookup() {
     const loc = gd.results[0];
     const place = [loc.name, loc.admin1, loc.country].filter(Boolean).join(', ');
 
-    // 2) Current + 7-day forecast for that location, in its own local time
-    const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,weathercode&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=auto&forecast_days=7`);
+    // 2) Current + 7-day forecast for that location, in its own local time.
+    // Pass the geocoded elevation so Open-Meteo downscales correctly for
+    // high-altitude towns (e.g. Tahoe at ~6,200 ft), matching other apps.
+    const elevParam = (loc.elevation != null) ? `&elevation=${loc.elevation}` : '';
+    const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}${elevParam}&current=temperature_2m,weathercode&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=auto&forecast_days=7`);
     const wd = await w.json();
     const cur = wd.current;
     const grid = wd.daily.time.map((t,i) => `
