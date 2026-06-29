@@ -91,6 +91,17 @@
       color: var(--text-3); text-transform: uppercase;
       letter-spacing: 0.08em; margin-bottom: 0.6rem;
     }
+    a.card-link {
+      display: block; text-decoration: none; color: inherit;
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+    a.card-link:hover {
+      border-color: var(--ocean);
+    }
+    a.card-link:hover .card-link-icon { opacity: 1; }
+    .card-link-icon {
+      opacity: 0.5; font-size: 0.7rem; vertical-align: baseline;
+    }
     .full-width { grid-column: span 3; }
     .span-2     { grid-column: span 2; }
 
@@ -321,8 +332,8 @@
   </div>
 
   <!-- Box 3: Surf & Swell -->
-  <div class="card card-surf">
-    <div class="card-title">Surf &amp; Swell · Redondo Beach</div>
+  <a class="card card-surf card-link" href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" rel="noopener">
+    <div class="card-title">Surf &amp; Swell · Redondo Beach <span class="card-link-icon">↗</span></div>
     <div class="surf-main" id="surf-ht">—<span class="surf-unit"> ft</span></div>
     <div style="font-size:0.72rem;color:var(--text-2);margin-bottom:0.4rem" id="surf-desc">Loading…</div>
     <div class="compass-wrap">
@@ -334,7 +345,7 @@
     <div class="stat-row"><span class="stat-label">Swell height</span><span class="stat-value" id="swell-ht">—</span></div>
     <div class="stat-row"><span class="stat-label">Swell period</span><span class="stat-value" id="swell-period">—</span></div>
     <div class="stat-row"><span class="stat-label">Swell direction</span><span class="stat-value" id="swell-dir">—</span></div>
-  </div>
+  </a>
 
   <!-- Box 4: Indoor + History -->
   <div class="card card-indoor">
