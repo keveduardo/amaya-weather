@@ -412,8 +412,10 @@
 
 <script>
 // ── Config ────────────────────────────────────────────────────────────────────
-const TEMPEST_TOKEN   = 'e702dd93-1138-49ab-992c-1337f603fc29';
-const TEMPEST_STATION = '161500';
+// WeatherFlow observations are fetched via the tempest-proxy Worker, which holds
+// the API token server-side (secret). No token in the client. Station id lives
+// in the proxy too — this page just asks for "the station".
+const TEMPEST_PROXY   = 'https://tempest.brisaloca.com/observations';
 const NOAA_TIDE_STN   = '9410660';
 const NOAA_SM_STN     = '9410840';
 const INDOOR_URL      = 'https://script.google.com/macros/s/AKfycbyfTQMyi4326FyOv_dBK3AzE8XfWnGcrNRp6DI7KQuqMl34PrOTc26YJ8fUdNhitW6BZw/exec';
@@ -508,7 +510,7 @@ function drawChart(canvasId, data) {
 // ── Tempest ───────────────────────────────────────────────────────────────────
 async function fetchTempest() {
   try {
-    const r = await fetch(`https://swd.weatherflow.com/swd/rest/observations/station/${TEMPEST_STATION}?token=${TEMPEST_TOKEN}`);
+    const r = await fetch(TEMPEST_PROXY);
     const d = await r.json();
     const obs = d.obs?.[0];
     if (!obs) return;
