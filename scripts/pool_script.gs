@@ -48,22 +48,54 @@ function doPost(e) {
     if (!sheetId) return jsonOut({ ok: false, error: "no sheet yet" });
     var ss = SpreadsheetApp.openById(sheetId);
 
-    var sh = ss.getSheetByName("Logs");
+    // Two mirror tabs, both keyed by the homecare row id in column A, so an
+    // edit or delete updates the right row rather than only ever appending.
+    //   kind 'reading' -> Logs,  kind 'dose' -> Doses
+    //   op   'upsert'  -> update the row with this id, or append if new
+    //   op   'delete'  -> remove the row with this id
+    var kind = body.kind || "reading";
+    var op   = body.op   || "upsert";
+    var row  = body.row  || body.reading || {};   // reading is the old field name
+
+    var spec = (kind === "dose")
+      ? { name: "Doses",
+          header: ["ID", "Date", "Chemical", "Product", "Amount", "Unit", "Source", "Note"],
+          cells: [row.id, row.dosed_on, row.chemical, row.product, row.amount,
+                  row.unit, row.source, row.note] }
+      : { name: "Logs",
+          header: ["ID", "Date", "Time", "FC", "CC", "pH", "TA", "Calcium", "CYA",
+                   "Salt", "Water temp", "Filter PSI", "Chlorinator %",
+                   "Chlorinator source", "Entry source", "Note"],
+          cells: [row.id, row.taken_on, row.time, row.fc, row.cc, row.ph, row.ta,
+                  row.ch, row.cya, row.salt, row.water_temp, row.filter_psi,
+                  row.chlorinator_pct, row.chlorinator_source, row.source, row.note] };
+
+    var sh = ss.getSheetByName(spec.name);
     if (!sh) {
-      sh = ss.insertSheet("Logs");
-      sh.appendRow(["Date", "Time", "FC", "CC", "pH", "TA", "Calcium", "CYA",
-                    "Salt", "Water temp", "Filter PSI", "Chlorinator %",
-                    "Chlorinator source", "Entry source", "Note"]);
+      sh = ss.insertSheet(spec.name);
+      sh.appendRow(spec.header);
       sh.setFrozenRows(1);
     }
 
-    var r = body.reading || {};
-    sh.appendRow([
-      r.taken_on || "", r.time || "",
-      r.fc, r.cc, r.ph, r.ta, r.ch, r.cya, r.salt, r.water_temp,
-      r.filter_psi, r.chlorinator_pct, r.chlorinator_source || "",
-      r.source || "", r.note || ""
-    ]);
+    // Find the existing row for this id (column A), if any.
+    var foundRow = 0;
+    if (row.id != null && sh.getLastRow() > 1) {
+      var ids = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
+      for (var i = 0; i < ids.length; i++) {
+        if (String(ids[i][0]) === String(row.id)) { foundRow = i + 2; break; }
+      }
+    }
+
+    if (op === "delete") {
+      if (foundRow) sh.deleteRow(foundRow);
+      return jsonOut({ ok: true, deleted: foundRow ? 1 : 0 });
+    }
+
+    if (foundRow) {
+      sh.getRange(foundRow, 1, 1, spec.cells.length).setValues([spec.cells]);
+    } else {
+      sh.appendRow(spec.cells);
+    }
     return jsonOut({ ok: true });
   } catch (err) {
     return jsonOut({ ok: false, error: String(err) });
