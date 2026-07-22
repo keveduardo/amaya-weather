@@ -17,9 +17,57 @@ function doGet(e) {
   if (e && e.parameter && e.parameter.history) {
     return jsonOut(getHistory());
   }
+  // ?fresh=1 -> live poll, ignoring cache AND quiet hours. homecare requests
+  // this so a chlorinator reading recorded against a water test is current
+  // rather than up to 15 minutes stale. Everything else serves the cache.
+  if (e && e.parameter && e.parameter.fresh) {
+    return jsonOut(doPoll(true));
+  }
   var cached = PropertiesService.getScriptProperties().getProperty("CACHED_DATA");
   if (cached) return jsonOut(JSON.parse(cached));
   return jsonOut(pollPool());   // first run / cache empty — fetch live
+}
+
+// ── Append a water test to the "Logs" tab of the Pool History sheet ──
+// homecare POSTs each reading here so the long-term record lands in the sheet
+// Kevin already has, next to "History" and "Stats", with no CSV download step.
+//
+// Same sheet, new tab. The existing pollPool -> History flow is untouched.
+function doPost(e) {
+  try {
+    var body = JSON.parse(e.postData.contents);
+    var props = PropertiesService.getScriptProperties();
+
+    // Shared-secret gate. /exec is otherwise open (finding L2), and this one
+    // WRITES, so it must not be callable by anyone with the URL.
+    if (!props.getProperty("LOG_TOKEN") || body.token !== props.getProperty("LOG_TOKEN")) {
+      return jsonOut({ ok: false, error: "unauthorized" });
+    }
+
+    var sheetId = props.getProperty("SHEET_ID");
+    if (!sheetId) return jsonOut({ ok: false, error: "no sheet yet" });
+    var ss = SpreadsheetApp.openById(sheetId);
+
+    var sh = ss.getSheetByName("Logs");
+    if (!sh) {
+      sh = ss.insertSheet("Logs");
+      sh.appendRow(["Date", "Time", "FC", "CC", "pH", "TA", "Calcium", "CYA",
+                    "Salt", "Water temp", "Filter PSI", "Chlorinator %",
+                    "Chlorinator source", "Entry source", "Note"]);
+      sh.setFrozenRows(1);
+    }
+
+    var r = body.reading || {};
+    sh.appendRow([
+      r.taken_on || "", r.time || "",
+      r.fc, r.cc, r.ph, r.ta, r.ch, r.cya, r.salt, r.water_temp,
+      r.filter_psi, r.chlorinator_pct, r.chlorinator_source || "",
+      r.source || "", r.note || ""
+    ]);
+    return jsonOut({ ok: true });
+  } catch (err) {
+    return jsonOut({ ok: false, error: String(err) });
+  }
 }
 
 function jsonOut(obj) {
