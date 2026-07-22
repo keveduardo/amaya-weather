@@ -54,6 +54,22 @@ function pollPool() {
       spa_set_point:  home.spa_set_point  !== "" ? parseInt(home.spa_set_point)  : null
     };
 
+    // Salt cell. These were already written to the history sheet but never
+    // returned by doGet, so nothing could read them. homecare fetches them at
+    // the moment a water test is logged, so a chlorine reading always carries
+    // the output setting that produced it.
+    //
+    // ! Whether iAquaLink actually populates these is unverified -- run
+    // debugHome() once and look. If pool_salinity comes back empty, this
+    // system does not report salt and the field should be dropped rather than
+    // logged as a permanent null.
+    var swc = home.swc_info || {};
+    result.chlorinator_pct = (swc.swcPoolValue != null && swc.swcPoolValue !== "")
+      ? parseInt(swc.swcPoolValue) : null;
+    result.chlorinator_status = swc.swcPoolStatus || null;
+    result.salt = (home.pool_salinity != null && home.pool_salinity !== "")
+      ? parseInt(home.pool_salinity) : null;
+
     // Pool temp: live when pump is running, else last cached reading
     if (home.pool_temp !== "") {
       result.pool_temp = parseInt(home.pool_temp);
@@ -225,6 +241,23 @@ function checkPumpHealth() {
     "Last live reading: " + (lastLive || "never") + "\n" +
     "— Amaya Weather pool monitor"
   );
+}
+
+// ── Diagnostic: what does iAquaLink ACTUALLY return? ─────────────────
+// Run this once from the Apps Script editor and read the log. It dumps every
+// field on the home screen, so questions like "does this system report salt?"
+// are answered by data rather than by assumption.
+function debugHome() {
+  var home = fetchHome();
+  Logger.log("=== ALL home_screen FIELDS ===");
+  Object.keys(home).sort().forEach(function(k) {
+    var v = home[k];
+    Logger.log(k + " = " + (typeof v === "object" ? JSON.stringify(v) : "'" + v + "'"));
+  });
+  Logger.log("");
+  Logger.log("=== THE ONES THAT MATTER ===");
+  Logger.log("pool_salinity : '" + home.pool_salinity + "'   (empty = salt not reported)");
+  Logger.log("swc_info      : " + JSON.stringify(home.swc_info || null));
 }
 
 // ── Run manually once to authorize + verify ──────────────────────────
