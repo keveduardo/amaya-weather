@@ -28,13 +28,31 @@ function jsonOut(obj) {
 }
 
 // ── Poller: set a time-driven trigger to run this every 15 minutes ──
+//
+// ! pollPool takes NO parameters on purpose. A time-driven trigger calls it
+// with an event object, so any first parameter would arrive truthy and a
+// "force" flag there would silently disable quiet hours forever.
 function pollPool() {
+  return doPoll(false);
+}
+
+// Force a poll, ignoring quiet hours. Run this from the editor after deploying
+// so you can verify immediately instead of waiting until 7am for the cache to
+// refresh -- doGet serves the CACHE, not live data.
+function refreshNow() {
+  var r = doPoll(true);
+  Logger.log(JSON.stringify(r, null, 2));
+  Logger.log("chlorinator_pct = " + r.chlorinator_pct);
+  return r;
+}
+
+function doPoll(force) {
   var props = PropertiesService.getScriptProperties();
   var now = new Date();
 
   // Quiet hours: skip polling 10pm–7am (pump is off; matches display night mode)
   var hour = parseInt(Utilities.formatDate(now, "America/Los_Angeles", "H"));
-  if (hour >= 22 || hour < 7) {
+  if (!force && (hour >= 22 || hour < 7)) {
     var quiet = props.getProperty("CACHED_DATA");
     return quiet ? JSON.parse(quiet) : { success: false, pool_temp: null, error: "quiet hours, no cache yet" };
   }
@@ -263,6 +281,6 @@ function debugHome() {
 
 // ── Run manually once to authorize + verify ──────────────────────────
 function testPoll() {
-  Logger.log(JSON.stringify(pollPool(), null, 2));
+  Logger.log(JSON.stringify(doPoll(true), null, 2));   // force: quiet hours would return the cache
   Logger.log("Sheet: " + (PropertiesService.getScriptProperties().getProperty("SHEET_ID") || "not yet created"));
 }
