@@ -54,21 +54,22 @@ function pollPool() {
       spa_set_point:  home.spa_set_point  !== "" ? parseInt(home.spa_set_point)  : null
     };
 
-    // Salt cell. These were already written to the history sheet but never
-    // returned by doGet, so nothing could read them. homecare fetches them at
-    // the moment a water test is logged, so a chlorine reading always carries
-    // the output setting that produced it.
+    // Salt cell OUTPUT SETTING only. Written to the history sheet already but
+    // never returned by doGet, so nothing could read it. homecare fetches this
+    // at the moment a water test is logged, so a chlorine reading always
+    // carries the output setting that produced it.
     //
-    // ! Whether iAquaLink actually populates these is unverified -- run
-    // debugHome() once and look. If pool_salinity comes back empty, this
-    // system does not report salt and the field should be dropped rather than
-    // logged as a permanent null.
+    // ! SALINITY IS DELIBERATELY NOT RETURNED. Kevin's call 2026-07-22, and a
+    // sound one: a salt cell infers salinity from conductivity, which drifts
+    // with water temperature and cell age and is commonly out by several
+    // hundred ppm. Salt is recorded from his drop test instead. Putting a
+    // controller estimate in the same column as a measurement would quietly
+    // degrade the record, and nobody would be able to tell which was which
+    // later. Do not add it back.
     var swc = home.swc_info || {};
     result.chlorinator_pct = (swc.swcPoolValue != null && swc.swcPoolValue !== "")
       ? parseInt(swc.swcPoolValue) : null;
     result.chlorinator_status = swc.swcPoolStatus || null;
-    result.salt = (home.pool_salinity != null && home.pool_salinity !== "")
-      ? parseInt(home.pool_salinity) : null;
 
     // Pool temp: live when pump is running, else last cached reading
     if (home.pool_temp !== "") {
