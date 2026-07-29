@@ -9,8 +9,27 @@
 // (SESSION_ID, CACHED_DATA, SHEET_ID, etc. are managed automatically)
 // ═══════════════════════════════════════════════════════════════════
 
-var SERIAL  = "QGR2RQBF42KD";
-var API_KEY = "EOOEMOW4YR6QNB11";
+// This repo is public, so nothing that identifies the hardware lives in source.
+// POOL_SERIAL is the pool controller's serial number — it names a specific piece
+// of equipment at the house, so it goes in Script Properties next to
+// IAQUALINK_EMAIL / IAQUALINK_PASSWORD (Project Settings -> Script Properties).
+//
+// ! Set POOL_SERIAL before the next pollPool() trigger, or polling will throw.
+function poolSerial() {
+  var serial = PropertiesService.getScriptProperties().getProperty("POOL_SERIAL");
+  // Fail loudly. Returning "" would just make iAquaLink answer for no device and
+  // look like an upstream outage on a 15-minute trigger nobody watches.
+  if (!serial) throw new Error("POOL_SERIAL is not set in Script Properties");
+  return serial;
+}
+
+// Not a per-user secret: this key ships inside the iAquaLink mobile app, so it's
+// identical for every install and public by design. Kept overridable so the file
+// pins nothing device-specific, but the default keeps polling working as-is.
+function iaqualinkApiKey() {
+  return PropertiesService.getScriptProperties().getProperty("IAQUALINK_API_KEY")
+      || "EOOEMOW4YR6QNB11";
+}
 
 // ── Web endpoint ─────────────────────────────────────────────────────
 function doGet(e) {
@@ -217,7 +236,7 @@ function tryGetHome(sessionId) {
   if (!sessionId) return null;
   var resp = UrlFetchApp.fetch(
     "https://p-api.iaqualink.net/v1/mobile/session.json" +
-    "?actionID=command&command=get_home&serial=" + SERIAL +
+    "?actionID=command&command=get_home&serial=" + poolSerial() +
     "&sessionID=" + sessionId,
     { muteHttpExceptions: true }
   );
@@ -242,7 +261,7 @@ function getSession(forceLogin) {
     method: "post",
     contentType: "application/json",
     payload: JSON.stringify({
-      apiKey: API_KEY,
+      apiKey: iaqualinkApiKey(),
       email: props.getProperty("IAQUALINK_EMAIL"),
       password: props.getProperty("IAQUALINK_PASSWORD")
     }),

@@ -1,0 +1,29 @@
+# This repo is PUBLIC. Anything ignored here is ignored because publishing it
+# would disclose a credential or identify hardware at the house — keep it that way.
+
+# Secrets. Apps Script config belongs in Script Properties, not in the repo:
+# IAQUALINK_EMAIL, IAQUALINK_PASSWORD, POOL_SERIAL, SHEET_ID, LOG_TOKEN.
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+clasp.json
+.clasprc.json
+
+# Tooling / build
+node_modules/
+.wrangler/
+dist/
+*.log
+
+# Per-machine Claude Code state
+.claude/settings.local.json
+.claude/skills/
+
+# OS noise
+.DS_Store
+Thumbs.db
