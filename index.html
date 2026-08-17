@@ -256,8 +256,76 @@
     .loading { color: var(--text-3); font-size: 0.78rem; }
     .error   { color: var(--red);    font-size: 0.78rem; }
 
+    /* ── Weather History / statistics ── */
+    .hist-controls {
+      display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.8rem;
+    }
+    .hist-select {
+      background: var(--sky-mid); color: var(--text-1);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 0.3rem 0.5rem; font-size: 0.78rem;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .hist-summary {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem; margin-bottom: 0.8rem;
+    }
+    .hist-stat {
+      background: var(--sky-mid); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 0.5rem 0.6rem;
+    }
+    .hist-stat-label {
+      font-size: 0.6rem; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.07em;
+    }
+    .hist-stat-value {
+      font-family: 'DM Mono', monospace; font-size: 1.15rem;
+      color: var(--text-1); margin-top: 2px;
+    }
+    .hist-stat-when { font-size: 0.62rem; color: var(--text-3); margin-top: 1px; }
+    .hist-chart-wrap { width: 100%; height: 150px; position: relative; margin-bottom: 0.8rem; }
+    .hist-chart-wrap canvas { width: 100% !important; height: 100% !important; }
+
+    .hist-split { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .hist-sub-title {
+      font-size: 0.62rem; color: var(--text-3); text-transform: uppercase;
+      letter-spacing: 0.07em; margin-bottom: 0.4rem;
+    }
+    /* Scrolls rather than stretching the card. A daily breakdown is 31 rows and
+       an all-time monthly one keeps growing; letting either set the card height
+       leaves the hour-of-day panel stranded beside a column of empty space. */
+    .hist-table-wrap { max-height: 232px; overflow-y: auto; }
+    .hist-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+    .hist-table th {
+      text-align: right; font-weight: 500; color: var(--text-3);
+      font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em;
+      padding: 0.2rem 0.3rem; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--sky-card);
+    }
+    .hist-table th:first-child, .hist-table td:first-child { text-align: left; }
+    .hist-table td {
+      text-align: right; padding: 0.22rem 0.3rem;
+      border-bottom: 1px solid var(--border);
+      font-family: 'DM Mono', monospace; color: var(--text-2);
+    }
+    .hist-table tr:last-child td { border-bottom: none; }
+
+    /* Hour-of-day bars. A plain flex row of divs rather than a canvas — 24
+       values need no scaling maths and stay readable when the card is narrow. */
+    .hist-hours { display: flex; align-items: flex-end; gap: 2px; height: 90px; }
+    .hist-hour { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+    .hist-hour-bar { background: var(--ocean-dim); border-radius: 2px 2px 0 0; min-height: 1px; }
+    .hist-hour-bar.peak { background: var(--sun); }
+    .hist-hour-axis {
+      display: flex; justify-content: space-between;
+      font-size: 0.58rem; color: var(--text-3); margin-top: 3px;
+    }
+    .hist-note { font-size: 0.65rem; color: var(--text-3); margin-top: 0.6rem; }
+
     /* ── Responsive / Mobile ── */
     @media (max-width: 768px) {
+      .hist-summary { grid-template-columns: repeat(2, 1fr); }
+      .hist-split   { grid-template-columns: 1fr; }
       .grid { grid-template-columns: 1fr; }
       .full-width, .span-2 { grid-column: span 1; }
       .forecast-grid { grid-template-columns: repeat(4, 1fr); }
@@ -268,7 +336,10 @@
       .card-surf     { order: 5; }
       .card-tides    { order: 6; }
       .card-forecast { order: 7; }
-      .card-travel   { order: 8; }
+      .card-history  { order: 8; }
+      /* Stays last on mobile — the search box was deliberately moved to the
+         bottom (commit e7da503) and history slots in above it, not past it. */
+      .card-travel   { order: 9; }
     }
   </style>
 </head>
@@ -396,7 +467,49 @@
     <div class="forecast-grid" id="forecast-grid"><div class="loading">Loading…</div></div>
   </div>
 
-  <!-- Box 8: Travel weather lookup (full width) -->
+  <!-- Box 8: Weather History / statistics (full width) -->
+  <div class="card full-width card-history">
+    <div class="card-title">Weather History</div>
+
+    <div class="hist-controls">
+      <select class="hist-select" id="hist-metric">
+        <option value="temp">Temperature</option>
+        <option value="humidity">Humidity</option>
+        <option value="wind">Wind</option>
+        <option value="rain">Rain</option>
+        <option value="uv">UV Index</option>
+        <option value="solar">Solar Radiation</option>
+        <option value="pressure">Pressure</option>
+      </select>
+      <select class="hist-select" id="hist-period">
+        <option value="30">Last 30 days</option>
+        <option value="90">Last 90 days</option>
+        <option value="365">Last 12 months</option>
+        <option value="0">All time</option>
+      </select>
+    </div>
+
+    <div class="hist-summary" id="hist-summary"></div>
+    <div class="hist-chart-wrap"><canvas id="histChart"></canvas></div>
+
+    <div class="hist-split">
+      <div>
+        <div class="hist-sub-title" id="hist-breakdown-title">By month</div>
+        <div class="hist-table-wrap">
+          <table class="hist-table"><tbody id="hist-breakdown"></tbody></table>
+        </div>
+      </div>
+      <div>
+        <div class="hist-sub-title" id="hist-hours-title">Average by hour of day</div>
+        <div class="hist-hours" id="hist-hours"></div>
+        <div class="hist-hour-axis"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div>
+      </div>
+    </div>
+
+    <div class="hist-note" id="hist-note"></div>
+  </div>
+
+  <!-- Box 9: Travel weather lookup (full width) -->
   <div class="card full-width card-travel">
     <div class="card-title">Weather Anywhere</div>
     <div class="travel-search">
@@ -776,6 +889,348 @@ async function fetchPool() {
   } catch(e) { console.error('Pool history:', e); }
 }
 
+// ── Weather History ───────────────────────────────────────────────────────────
+// Reads the tempest-proxy archive (D1), not WeatherFlow. Daily figures come from
+// the obs_day rollup and hourly ones from obs_hour, so a year costs 365 rows
+// rather than the ~525,000 minutes behind it.
+//
+// Stored values are the sensor's native metric; every conversion to the units
+// Kevin reads in happens here, at the edge of the display.
+const HISTORY_URL = 'https://tempest.brisaloca.com/history';
+
+const HIST_METRICS = {
+  temp: {
+    label: 'Temperature', unit: '°F', dec: 1, conv: c => c * 9/5 + 32,
+    min: 'temp_min', avg: 'temp_avg', max: 'temp_max',
+    lowLabel: 'Coldest', maxLabel: 'Hottest',
+  },
+  humidity: {
+    label: 'Humidity', unit: '%', dec: 0, conv: v => v,
+    min: 'humidity_min', avg: 'humidity_avg', max: 'humidity_max',
+    lowLabel: 'Driest', maxLabel: 'Most humid',
+  },
+  wind: {
+    label: 'Wind', unit: 'mph', dec: 1, conv: v => v * 2.23694,
+    avg: 'wind_avg', max: 'wind_gust_max',
+    lowLabel: 'Calmest day', maxLabel: 'Peak gust',
+  },
+  rain: {
+    label: 'Rain', unit: 'in', dec: 2, conv: v => v / 25.4,
+    sum: 'precip_total', bars: true,
+  },
+  uv: {
+    label: 'UV Index', unit: '', dec: 1, conv: v => v,
+    avg: 'uv_avg', max: 'uv_max',
+    lowLabel: 'Lowest day', maxLabel: 'Peak UV',
+  },
+  solar: {
+    label: 'Solar', unit: 'W/m²', dec: 0, conv: v => v,
+    avg: 'solar_avg', max: 'solar_max',
+    lowLabel: 'Dullest day', maxLabel: 'Peak',
+  },
+  pressure: {
+    label: 'Pressure', unit: 'inHg', dec: 2, conv: v => v * 0.0295300,
+    min: 'pressure_min', avg: 'pressure_avg', max: 'pressure_max',
+    lowLabel: 'Lowest', maxLabel: 'Highest',
+  },
+};
+
+// A complete day is 1,440 one-minute rows. Days well short of that are real but
+// partial — the first and last day of the archive always are — and averaging
+// them in unlabelled would quietly understate a hot afternoon that only got
+// three hours of coverage.
+const HIST_FULL_DAY = 1440;
+
+let histDays = null;   // cached daily rows; the archive only changes once a day
+let histHours = null;
+
+async function histLoad() {
+  const period = Number($('hist-period').value);
+  const note = $('hist-note');
+  try {
+    const qs = period ? `?days=${period}` : '?days=20000';
+    const r = await fetch(HISTORY_URL + qs);
+    if (!r.ok) throw new Error(`history ${r.status}`);
+    histDays = (await r.json()).days || [];
+
+    // Hourly, for the by-hour panel. Capped at the most recent 365 days of the
+    // chosen range: the endpoint truncates at 20,000 rows taking the OLDEST
+    // first, so an unbounded request over a multi-year range would silently
+    // drop the recent end — the opposite of what anyone would expect.
+    if (histDays.length) {
+      const lastDay = histDays[histDays.length - 1].day_local;
+      const to = Math.floor(new Date(`${lastDay}T23:59:59Z`).getTime() / 1000) + 86400;
+      const spanDays = Math.min(histDays.length, 365);
+      const from = to - spanDays * 86400;
+      const hr = await fetch(`${HISTORY_URL}/hour?from=${from}&to=${to}`);
+      histHours = hr.ok ? ((await hr.json()).hours || []) : [];
+    } else {
+      histHours = [];
+    }
+    note.textContent = '';
+    histRender();
+  } catch (e) {
+    console.error('History:', e);
+    $('hist-summary').innerHTML = '<div class="error">Archive unavailable</div>';
+    note.textContent = '';
+  }
+}
+
+function histRender() {
+  if (!histDays) return;
+  const m = HIST_METRICS[$('hist-metric').value];
+  const rows = histDays.filter(d => d.n > 0);
+  const fmt = v => v == null ? '—' : m.conv(v).toFixed(m.dec);
+
+  if (!rows.length) {
+    $('hist-summary').innerHTML = '<div class="loading">No data yet</div>';
+    return;
+  }
+
+  // ── Summary tiles ──
+  const cards = [];
+  if (m.sum) {
+    const total = rows.reduce((a, d) => a + (d[m.sum] || 0), 0);
+    const wettest = rows.reduce((a, d) => (d[m.sum] || 0) > (a[m.sum] || 0) ? d : a, rows[0]);
+    const rainyDays = rows.filter(d => (d.rain_minutes || 0) > 0).length;
+    cards.push(['Total', `${m.conv(total).toFixed(m.dec)}${m.unit}`, `${rows.length} days`]);
+    cards.push(['Rainy days', String(rainyDays), `${(rainyDays / rows.length * 100).toFixed(0)}% of days`]);
+    cards.push(['Wettest day', `${m.conv(wettest[m.sum]).toFixed(m.dec)}${m.unit}`, histNiceDate(wettest.day_local)]);
+    const totalMin = rows.reduce((a, d) => a + (d.rain_minutes || 0), 0);
+    cards.push(['Time raining', `${(totalMin / 60).toFixed(1)}h`, 'across the period']);
+  } else {
+    // Weighted by n: days differ in coverage, so a plain mean of daily means
+    // would let a three-hour day count as much as a complete one.
+    let wsum = 0, w = 0;
+    for (const d of rows) {
+      if (d[m.avg] == null) continue;
+      wsum += d[m.avg] * d.n; w += d.n;
+    }
+    const avg = w ? wsum / w : null;
+
+    const lowKey = m.min || m.avg, highKey = m.max || m.avg;
+    const lowRow = rows.reduce((a, d) => (d[lowKey] != null && (a[lowKey] == null || d[lowKey] < a[lowKey])) ? d : a, rows[0]);
+    const highRow = rows.reduce((a, d) => (d[highKey] != null && (a[highKey] == null || d[highKey] > a[highKey])) ? d : a, rows[0]);
+
+    cards.push([m.lowLabel || 'Lowest', `${fmt(lowRow[lowKey])}${m.unit}`, histNiceDate(lowRow.day_local)]);
+    cards.push(['Average', `${fmt(avg)}${m.unit}`, `${rows.length} days`]);
+    cards.push([m.maxLabel || 'Highest', `${fmt(highRow[highKey])}${m.unit}`, histNiceDate(highRow.day_local)]);
+
+    // Fourth tile is metric-specific: the thing the three above cannot say.
+    if (m === HIST_METRICS.temp) {
+      const swing = rows.reduce((a, d) => Math.max(a, (d.temp_max - d.temp_min) || 0), 0);
+      cards.push(['Biggest swing', `${(swing * 9/5).toFixed(1)}°F`, 'max in one day']);
+    } else if (m === HIST_METRICS.wind) {
+      const dirs = rows.filter(d => d.wind_dir_prevailing != null);
+      cards.push(['Prevailing', dirs.length ? degToCard(histCircularMean(dirs)) : '—', 'wind direction']);
+    } else {
+      cards.push(['Days', String(rows.length), 'in range']);
+    }
+  }
+
+  $('hist-summary').innerHTML = cards.map(([l, v, w]) =>
+    `<div class="hist-stat"><div class="hist-stat-label">${l}</div>
+     <div class="hist-stat-value">${v}</div><div class="hist-stat-when">${w}</div></div>`
+  ).join('');
+
+  histDrawChart(rows, m);
+  histBreakdown(rows, m);
+  histByHour(m);
+
+  const partial = rows.filter(d => d.n < HIST_FULL_DAY * 0.9).length;
+  $('hist-note').textContent = partial
+    ? `${partial} of ${rows.length} days have partial coverage (fewer than 1,296 of 1,440 minutes) and are included as recorded.`
+    : '';
+}
+
+// Circular mean of daily prevailing directions, weighted by that day's mean
+// wind. Same reason the rollup does it in SQL: averaging 350° and 10° the
+// obvious way gives 180°, which is exactly backwards.
+function histCircularMean(rows) {
+  let x = 0, y = 0;
+  for (const d of rows) {
+    const w = d.wind_avg || 0, rad = d.wind_dir_prevailing * Math.PI / 180;
+    x += w * Math.sin(rad); y += w * Math.cos(rad);
+  }
+  return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+}
+
+const histNiceDate = s => {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+// Daily chart: a min–max band with the average through it where the metric has
+// a range, bars where it is a total (rain). A single average line would hide
+// that a 70°F day can be 55 overnight and 85 at noon.
+function histDrawChart(rows, m) {
+  const canvas = $('histChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth || 600;
+  canvas.height = canvas.offsetHeight || 150;
+  const W = canvas.width, H = canvas.height;
+  const padL = 30, padR = 6, padT = 8, padB = 16;
+  ctx.clearRect(0, 0, W, H);
+
+  const vals = [];
+  for (const d of rows) {
+    for (const k of [m.min, m.avg, m.max, m.sum]) {
+      if (k && d[k] != null) vals.push(m.conv(d[k]));
+    }
+  }
+  if (!vals.length) return;
+
+  let mn = Math.min(...vals), mx = Math.max(...vals);
+  if (m.sum) mn = 0;                       // a rain chart that doesn't start at zero lies
+  if (mx - mn < 1e-9) { mx += 1; mn -= 1; }
+  const pad = (mx - mn) * 0.08; mn -= pad; mx += pad;
+
+  const toX = i => padL + (W - padL - padR) * (rows.length === 1 ? 0.5 : i / (rows.length - 1));
+  const toY = v => H - padB - (H - padT - padB) * (v - mn) / (mx - mn);
+
+  // Gridlines and y labels
+  ctx.font = '9px DM Sans';
+  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--border') || 'rgba(255,255,255,0.07)';
+  ctx.fillStyle = '#4e6a82';
+  ctx.lineWidth = 1;
+  for (let g = 0; g <= 3; g++) {
+    const v = mn + (mx - mn) * g / 3, y = toY(v);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+    ctx.fillText(v.toFixed(m.dec === 0 ? 0 : 1), 2, y + 3);
+  }
+
+  if (m.sum) {
+    const bw = Math.max(1, (W - padL - padR) / rows.length - 1);
+    ctx.fillStyle = '#6aaed6';
+    rows.forEach((d, i) => {
+      const v = m.conv(d[m.sum] || 0);
+      if (v <= 0) return;
+      ctx.fillRect(toX(i) - bw / 2, toY(v), bw, H - padB - toY(v));
+    });
+  } else {
+    if (m.min && m.max) {
+      ctx.beginPath();
+      rows.forEach((d, i) => {
+        const v = d[m.max] != null ? m.conv(d[m.max]) : null;
+        if (v == null) return;
+        i === 0 ? ctx.moveTo(toX(i), toY(v)) : ctx.lineTo(toX(i), toY(v));
+      });
+      for (let i = rows.length - 1; i >= 0; i--) {
+        const v = rows[i][m.min] != null ? m.conv(rows[i][m.min]) : null;
+        if (v != null) ctx.lineTo(toX(i), toY(v));
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(58,143,196,0.22)';
+      ctx.fill();
+    }
+    const line = m.avg || m.max;
+    ctx.beginPath();
+    let started = false;
+    rows.forEach((d, i) => {
+      if (d[line] == null) return;
+      const y = toY(m.conv(d[line]));
+      started ? ctx.lineTo(toX(i), y) : (ctx.moveTo(toX(i), y), started = true);
+    });
+    ctx.strokeStyle = '#3a8fc4';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // X labels: first and last only. Anything denser is unreadable at this width.
+  ctx.fillStyle = '#4e6a82';
+  ctx.fillText(histNiceDate(rows[0].day_local), padL, H - 4);
+  const lastLabel = histNiceDate(rows[rows.length - 1].day_local);
+  ctx.fillText(lastLabel, W - padR - ctx.measureText(lastLabel).width, H - 4);
+}
+
+// Monthly table, or daily when the range is short enough that months would be
+// a single row telling you nothing.
+function histBreakdown(rows, m) {
+  const byMonth = rows.length > 45;
+  $('hist-breakdown-title').textContent = byMonth ? 'By month' : 'By day';
+
+  const groups = new Map();
+  for (const d of rows) {
+    const key = byMonth ? d.day_local.slice(0, 7) : d.day_local;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(d);
+  }
+
+  const fmt = v => v == null ? '—' : m.conv(v).toFixed(m.dec);
+  const out = [`<tr><th>${byMonth ? 'Month' : 'Day'}</th>` +
+    (m.sum ? '<th>Total</th><th>Wet days</th>' : '<th>Low</th><th>Avg</th><th>High</th>') + '</tr>'];
+
+  const keys = [...groups.keys()].sort().reverse().slice(0, byMonth ? 24 : 31);
+  for (const k of keys) {
+    const g = groups.get(k);
+    const label = byMonth
+      ? new Date(+k.slice(0, 4), +k.slice(5, 7) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+      : histNiceDate(k);
+    if (m.sum) {
+      const total = g.reduce((a, d) => a + (d[m.sum] || 0), 0);
+      const wet = g.filter(d => (d.rain_minutes || 0) > 0).length;
+      out.push(`<tr><td>${label}</td><td>${m.conv(total).toFixed(m.dec)}</td><td>${wet}</td></tr>`);
+    } else {
+      const lows = g.map(d => d[m.min || m.avg]).filter(v => v != null);
+      const highs = g.map(d => d[m.max || m.avg]).filter(v => v != null);
+      let wsum = 0, w = 0;
+      for (const d of g) { if (d[m.avg] != null) { wsum += d[m.avg] * d.n; w += d.n; } }
+      out.push(`<tr><td>${label}</td><td>${lows.length ? fmt(Math.min(...lows)) : '—'}</td>` +
+        `<td>${w ? fmt(wsum / w) : '—'}</td><td>${highs.length ? fmt(Math.max(...highs)) : '—'}</td></tr>`);
+    }
+  }
+  $('hist-breakdown').innerHTML = out.join('');
+}
+
+// Average by local hour of day, from obs_hour. The local hour is derived here
+// rather than stored, so it stays correct across both daylight-saving edges.
+function histByHour(m) {
+  const el = $('hist-hours');
+  if (!histHours || !histHours.length) {
+    el.innerHTML = '<div class="loading">No hourly data yet</div>';
+    return;
+  }
+  const key = m.sum || m.avg || m.max;
+  const sums = new Array(24).fill(0), counts = new Array(24).fill(0);
+  for (const h of histHours) {
+    if (h[key] == null) continue;
+    const hour = Number(new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false,
+    }).format(new Date(h.hour_ts * 1000))) % 24;
+    sums[hour] += h[key] * (m.sum ? 1 : h.n);
+    counts[hour] += m.sum ? 1 : h.n;
+  }
+  const avgs = sums.map((s, i) => counts[i] ? m.conv(m.sum ? s : s / counts[i]) : null);
+  const present = avgs.filter(v => v != null);
+  if (!present.length) { el.innerHTML = '<div class="loading">No hourly data yet</div>'; return; }
+
+  const mx = Math.max(...present);
+  // Floor at zero for totals; for ranged metrics scale from just under the
+  // minimum, or every bar in a 60-75°F day looks identical.
+  const base = m.sum ? 0 : Math.min(...present) - (mx - Math.min(...present)) * 0.15 || 0;
+  const peak = avgs.indexOf(mx);
+
+  el.innerHTML = avgs.map((v, i) => {
+    if (v == null) return '<div class="hist-hour"></div>';
+    const pct = mx - base > 0 ? Math.max(2, (v - base) / (mx - base) * 100) : 50;
+    const label = `${((i + 11) % 12) + 1}${i < 12 ? 'am' : 'pm'}: ${v.toFixed(m.dec)}${m.unit}`;
+    return `<div class="hist-hour" title="${label}">
+      <div class="hist-hour-bar${i === peak ? ' peak' : ''}" style="height:${pct}%"></div></div>`;
+  }).join('');
+
+  // Name the peak hour only when there is one. With no rain in the range every
+  // hour is zero, and "peak 12am" reads as a finding rather than an artefact of
+  // indexOf picking the first of 24 equal values.
+  const flat = mx <= 0 || present.every(v => Math.abs(v - mx) < 1e-9);
+  $('hist-hours-title').textContent =
+    `${m.sum ? 'Total' : 'Average'} ${m.label.toLowerCase()} by hour` +
+    (flat ? '' : ` · peak ${((peak + 11) % 12) + 1}${peak < 12 ? 'am' : 'pm'}`);
+}
+
+$('hist-metric').addEventListener('change', histRender);
+$('hist-period').addEventListener('change', histLoad);
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function refresh() {
   await Promise.all([
@@ -786,6 +1241,20 @@ async function refresh() {
 }
 refresh();
 setInterval(refresh, 5 * 60 * 1000);
+
+// History is deliberately outside the 5-minute cycle. The rollups it reads only
+// change when a day does, so refetching them with the live conditions would be
+// hundreds of wasted rows an hour for a chart that cannot have moved.
+histLoad();
+setInterval(histLoad, 60 * 60 * 1000);
+
+// The daily chart is drawn to a canvas sized in CSS, so it has to be redrawn
+// when that size changes — otherwise it stays at its first width, stretched.
+let histResizeTimer;
+addEventListener('resize', () => {
+  clearTimeout(histResizeTimer);
+  histResizeTimer = setTimeout(() => { if (histDays) histRender(); }, 200);
+});
 
 // Travel lookup is on-demand only (not in the auto-refresh cycle)
 $('travel-btn').addEventListener('click', travelLookup);
