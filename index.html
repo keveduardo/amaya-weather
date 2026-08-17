@@ -481,11 +481,25 @@
         <option value="solar">Solar Radiation</option>
         <option value="pressure">Pressure</option>
       </select>
+      <select class="hist-select" id="hist-extremes">
+        <option value="raw">Raw extremes</option>
+        <option value="robust">Robust extremes</option>
+      </select>
       <select class="hist-select" id="hist-period">
         <option value="30">Last 30 days</option>
         <option value="90">Last 90 days</option>
         <option value="365">Last 12 months</option>
         <option value="0">All time</option>
+        <option value="month">A specific month…</option>
+        <option value="custom">Custom range…</option>
+      </select>
+      <input class="hist-select hist-when" id="hist-month" type="month" hidden>
+      <input class="hist-select hist-when" id="hist-from" type="date" hidden>
+      <input class="hist-select hist-when" id="hist-to" type="date" hidden>
+      <select class="hist-select" id="hist-group">
+        <option value="auto">Group: auto</option>
+        <option value="day">Group by day</option>
+        <option value="month">Group by month</option>
       </select>
     </div>
 
@@ -902,6 +916,7 @@ const HIST_METRICS = {
   temp: {
     label: 'Temperature', unit: '°F', dec: 1, conv: c => c * 9/5 + 32,
     min: 'temp_min', avg: 'temp_avg', max: 'temp_max',
+    robustMin: 'temp_p001', robustMax: 'temp_p999',
     lowLabel: 'Coldest', maxLabel: 'Hottest',
   },
   humidity: {
@@ -911,7 +926,7 @@ const HIST_METRICS = {
   },
   wind: {
     label: 'Wind', unit: 'mph', dec: 1, conv: v => v * 2.23694,
-    avg: 'wind_avg', max: 'wind_gust_max',
+    avg: 'wind_avg', max: 'wind_gust_max', robustMax: 'gust_p999',
     lowLabel: 'Calmest day', maxLabel: 'Peak gust',
   },
   rain: {
@@ -920,12 +935,12 @@ const HIST_METRICS = {
   },
   uv: {
     label: 'UV Index', unit: '', dec: 1, conv: v => v,
-    avg: 'uv_avg', max: 'uv_max',
+    avg: 'uv_avg', max: 'uv_max', robustMax: 'uv_p999',
     lowLabel: 'Lowest day', maxLabel: 'Peak UV',
   },
   solar: {
     label: 'Solar', unit: 'W/m²', dec: 0, conv: v => v,
-    avg: 'solar_avg', max: 'solar_max',
+    avg: 'solar_avg', max: 'solar_max', robustMax: 'solar_p999',
     lowLabel: 'Dullest day', maxLabel: 'Peak',
   },
   pressure: {
@@ -941,14 +956,58 @@ const HIST_METRICS = {
 // three hours of coverage.
 const HIST_FULL_DAY = 1440;
 
+let histBreakdownClipped = 0;  // rows the table omitted, reported in the footnote
 let histDays = null;   // cached daily rows; the archive only changes once a day
 let histHours = null;
 
+// Which days the controls are asking for. Returns either a rolling {days: N} or
+// an explicit {from, to}; null means "the inputs are not filled in yet", which
+// is a normal state while the user is still picking and not an error.
+function histRange() {
+  const p = $('hist-period').value;
+
+  if (p === 'month') {
+    const m = $('hist-month').value;               // 'YYYY-MM'
+    if (!m) return null;
+    const [y, mo] = m.split('-').map(Number);
+    // Day 0 of the NEXT month is the last day of this one, which is how the
+    // month length gets decided without a table or a leap-year rule.
+    const last = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+    return { from: `${m}-01`, to: `${m}-${String(last).padStart(2, '0')}` };
+  }
+
+  if (p === 'custom') {
+    const f = $('hist-from').value, t = $('hist-to').value;
+    if (!f || !t) return null;
+    // Accept the dates either way round rather than showing an empty chart when
+    // they are entered end-first.
+    return f <= t ? { from: f, to: t } : { from: t, to: f };
+  }
+
+  return { days: Number(p) || 20000 };
+}
+
+// Show only the inputs the current period needs.
+function histSyncControls() {
+  const p = $('hist-period').value;
+  $('hist-month').hidden = p !== 'month';
+  $('hist-from').hidden = p !== 'custom';
+  $('hist-to').hidden = p !== 'custom';
+}
+
 async function histLoad() {
-  const period = Number($('hist-period').value);
+  histSyncControls();
+  const range = histRange();
   const note = $('hist-note');
+  if (!range) {
+    note.textContent = $('hist-period').value === 'month'
+      ? 'Pick a month.' : 'Pick a start and end date.';
+    return;
+  }
   try {
-    const qs = period ? `?days=${period}` : '?days=20000';
+    const qs = range.days
+      ? `?days=${range.days}`
+      : `?from=${range.from}&to=${range.to}`;
     const r = await fetch(HISTORY_URL + qs);
     if (!r.ok) throw new Error(`history ${r.status}`);
     histDays = (await r.json()).days || [];
@@ -978,8 +1037,40 @@ async function histLoad() {
 
 function histRender() {
   if (!histDays) return;
-  const m = HIST_METRICS[$('hist-metric').value];
-  const rows = histDays.filter(d => d.n > 0);
+  const base = HIST_METRICS[$('hist-metric').value];
+
+  // Robust mode swaps the daily extreme for the SECOND most extreme reading of
+  // that day, so one bad sample cannot set a record. It is a display choice, not
+  // a filter: nothing is removed, and the raw figures are one dropdown away.
+  //
+  // Only some metrics have a robust column — humidity and pressure are bounded
+  // and never needed one. Those fall back to raw rather than showing blanks, and
+  // the footnote says so instead of leaving it to be guessed at.
+  const robust = $('hist-extremes').value === 'robust';
+  const hasRobust = robust && (base.robustMax || base.robustMin);
+  const m = hasRobust
+    ? { ...base,
+        max: base.robustMax || base.max,
+        min: base.robustMin || base.min }
+    : base;
+
+  let rows = histDays.filter(d => d.n > 0);
+
+  // A day only has robust columns once the rollup has recomputed it, which lags
+  // the backfill. Fill those in from the raw extreme rather than dropping the
+  // day: excluding them made the robust maximum the maximum of a SUBSET, which
+  // read 5 F cooler than the truth and looked like a working filter instead of
+  // missing data.
+  let fellBack = 0;
+  if (hasRobust) {
+    rows = rows.map(d => {
+      const c = { ...d };
+      if (base.robustMax && c[base.robustMax] == null) { c[base.robustMax] = d[base.max]; fellBack++; }
+      if (base.robustMin && c[base.robustMin] == null) { c[base.robustMin] = d[base.min]; }
+      return c;
+    });
+  }
+
   const fmt = v => v == null ? '—' : m.conv(v).toFixed(m.dec);
 
   if (!rows.length) {
@@ -1017,10 +1108,10 @@ function histRender() {
     cards.push([m.maxLabel || 'Highest', `${fmt(highRow[highKey])}${m.unit}`, histNiceDate(highRow.day_local)]);
 
     // Fourth tile is metric-specific: the thing the three above cannot say.
-    if (m === HIST_METRICS.temp) {
+    if (base === HIST_METRICS.temp) {
       const swing = rows.reduce((a, d) => Math.max(a, (d.temp_max - d.temp_min) || 0), 0);
       cards.push(['Biggest swing', `${(swing * 9/5).toFixed(1)}°F`, 'max in one day']);
-    } else if (m === HIST_METRICS.wind) {
+    } else if (base === HIST_METRICS.wind) {
       const dirs = rows.filter(d => d.wind_dir_prevailing != null);
       cards.push(['Prevailing', dirs.length ? degToCard(histCircularMean(dirs)) : '—', 'wind direction']);
     } else {
@@ -1037,10 +1128,29 @@ function histRender() {
   histBreakdown(rows, m);
   histByHour(m);
 
+  const notes = [];
+
+  if (histBreakdownClipped) {
+    notes.push(`The breakdown lists the most recent ${histBreakdownClipped === 1 ? 'entries' : 'entries'}; ${histBreakdownClipped} older row${histBreakdownClipped === 1 ? ' is' : 's are'} not shown. The figures above cover the whole range.`);
+  }
+
   const partial = rows.filter(d => d.n < HIST_FULL_DAY * 0.9).length;
-  $('hist-note').textContent = partial
-    ? `${partial} of ${rows.length} days have partial coverage (fewer than 1,296 of 1,440 minutes) and are included as recorded.`
-    : '';
+  if (partial) notes.push(`${partial} of ${rows.length} days have partial coverage (fewer than 1,296 of 1,440 minutes) and are included as recorded.`);
+
+  // Rows the quality gate rejected as physically impossible. Normally zero.
+  // Reported rather than hidden — a figure that starts climbing is the sensor
+  // failing, which is the fault the gate exists to reveal.
+  const excluded = rows.reduce((a, d) => a + (d.qc_excluded || 0), 0);
+  if (excluded) notes.push(`${excluded} reading${excluded === 1 ? '' : 's'} failed the physical-range check and were excluded from the figures above.`);
+
+  if (robust && !hasRobust) {
+    notes.push(`${base.label} has no robust extreme — it is physically bounded, so the raw figures are shown.`);
+  } else if (hasRobust) {
+    notes.push(`Robust extremes ignore each day's single most extreme reading, so one bad sample cannot set a record. Nothing is removed from the archive.`);
+    if (fellBack) notes.push(`${fellBack} day${fellBack === 1 ? '' : 's'} in this range have not been recomputed yet and show their raw extreme.`);
+  }
+
+  $('hist-note').textContent = notes.join(' ');
 }
 
 // Circular mean of daily prevailing directions, weighted by that day's mean
@@ -1147,7 +1257,11 @@ function histDrawChart(rows, m) {
 // Monthly table, or daily when the range is short enough that months would be
 // a single row telling you nothing.
 function histBreakdown(rows, m) {
-  const byMonth = rows.length > 45;
+  // Auto switches at 45 days, where a day-by-day table stops being readable.
+  // The explicit settings override it — a month view of a 30-day range is a
+  // single summary row, which is a legitimate thing to ask for.
+  const group = $('hist-group').value;
+  const byMonth = group === 'month' || (group === 'auto' && rows.length > 45);
   $('hist-breakdown-title').textContent = byMonth ? 'By month' : 'By day';
 
   const groups = new Map();
@@ -1161,7 +1275,10 @@ function histBreakdown(rows, m) {
   const out = [`<tr><th>${byMonth ? 'Month' : 'Day'}</th>` +
     (m.sum ? '<th>Total</th><th>Wet days</th>' : '<th>Low</th><th>Avg</th><th>High</th>') + '</tr>'];
 
-  const keys = [...groups.keys()].sort().reverse().slice(0, byMonth ? 24 : 31);
+  const allKeys = [...groups.keys()].sort().reverse();
+  const cap = byMonth ? 240 : 200;
+  const keys = allKeys.slice(0, cap);
+  histBreakdownClipped = allKeys.length - keys.length;
   for (const k of keys) {
     const g = groups.get(k);
     const label = byMonth
@@ -1229,6 +1346,11 @@ function histByHour(m) {
 }
 
 $('hist-metric').addEventListener('change', histRender);
+$('hist-extremes').addEventListener('change', histRender);
+$('hist-group').addEventListener('change', histRender);
+$('hist-month').addEventListener('change', histLoad);
+$('hist-from').addEventListener('change', histLoad);
+$('hist-to').addEventListener('change', histLoad);
 $('hist-period').addEventListener('change', histLoad);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -1241,6 +1363,32 @@ async function refresh() {
 }
 refresh();
 setInterval(refresh, 5 * 60 * 1000);
+
+// Bound the date pickers to what the archive actually holds, so a range with no
+// data cannot be chosen. The lower bound moves as the backfill walks further
+// back, which is why this is read at load rather than hardcoded.
+async function histBounds() {
+  try {
+    const r = await fetch('https://tempest.brisaloca.com/status');
+    if (!r.ok) return;
+    const { obs } = await r.json();
+    if (!obs || !obs.oldest) return;
+    const day = ts => new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date(ts * 1000));
+    const lo = day(obs.oldest), hi = day(obs.newest);
+    for (const id of ['hist-from', 'hist-to']) {
+      $(id).min = lo; $(id).max = hi;
+    }
+    $('hist-month').min = lo.slice(0, 7);
+    $('hist-month').max = hi.slice(0, 7);
+    // Sensible starting values so the pickers are not empty when first opened.
+    if (!$('hist-from').value) $('hist-from').value = lo;
+    if (!$('hist-to').value) $('hist-to').value = hi;
+    if (!$('hist-month').value) $('hist-month').value = hi.slice(0, 7);
+  } catch (e) { console.error('History bounds:', e); }
+}
+histBounds();
 
 // History is deliberately outside the 5-minute cycle. The rollups it reads only
 // change when a day does, so refetching them with the live conditions would be
